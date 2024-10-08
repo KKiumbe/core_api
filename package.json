@@ -11,5 +11,10 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.7.0",
     "node-schedule": "^2.1.1"
+  },
+
+  "scripts": {
+    "start": "node server.js",
+    "postinstall": "npm rebuild bcrypt --build-from-source"
   }
 }
