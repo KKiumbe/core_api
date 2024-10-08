@@ -1,0 +1,79 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL") // MongoDB connection string from environment variables
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  firstName   String
+  lastName    String
+  phoneNumber String   @unique
+  email       String?  @unique
+  county      String?
+  town        String?
+  gender      String
+  password    String   // To store hashed passwords
+}
+
+model Customer {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  firstName     String
+  lastName      String
+  email         String?  @unique
+  phoneNumber   String   // Assuming phoneNumber is unique for customers
+  gender        String
+  county        String?
+  town          String?
+  location      String?
+  category      String?
+  monthlyCharge Float
+
+  // New field for customer status
+  status        CustomerStatus @default(ACTIVE) // Default status is ACTIVE
+
+  // Relation to Invoice model
+  invoices      Invoice[] @relation("CustomerInvoices") // Correct relation definition
+}
+
+// Enum for customer status
+enum CustomerStatus {
+  ACTIVE
+  DORMANT
+}
+
+model Invoice {
+  id              String       @id @default(auto()) @map("_id") @db.ObjectId
+  customerId      String       @db.ObjectId
+  invoicePeriod   DateTime
+  invoiceNumber   String       // Unique invoice number
+  invoiceAmount   Float        
+  closingBalance  Float
+  status          InvoiceStatus @default(UNPAID) // Adjusted status with enum
+  isSystemGenerated Boolean    
+  createdAt       DateTime     @default(now())
+
+  customer        Customer     @relation(fields: [customerId], references: [id], name: "CustomerInvoices")
+  items           InvoiceItem[] @relation("InvoiceItems")
+}
+
+// Enum for invoice status
+enum InvoiceStatus {
+  UNPAID
+  PAID
+  CANCELLED
+}
+
+
+model InvoiceItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  invoiceId String   @db.ObjectId // Reference to the Invoice ID
+  description String   // Description of the item
+  amount     Float    // Charge for the item
+  quantity   Int      // Quantity of the item
+
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id], name: "InvoiceItems")
+}
