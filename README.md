@@ -1,2 +1,1 @@
-# TrashCollectionApp
-# TrashCollectionApp
+# TaQa
