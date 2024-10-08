@@ -3,8 +3,10 @@ datasource db {
   url      = env("DATABASE_URL") // MongoDB connection string from environment variables
 }
 
+
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 model User {
