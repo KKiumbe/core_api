@@ -21,7 +21,7 @@ dotenv.config();
 
   try {
     // Check if phoneNumber already exists (unique phone number for login)
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.User.findUnique({
       where: {
         phoneNumber: phoneNumber,
       },
@@ -68,7 +68,7 @@ const signin = async (req, res) => {
   
     try {
       // Find the user by phone number
-      const user = await prisma.user.findUnique({
+      const user = await prisma.User.findUnique({
         where: { phoneNumber },
       });
   
