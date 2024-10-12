@@ -1,6 +1,11 @@
 const { PrismaClient } = require('@prisma/client');
 const schedule = require('node-schedule'); // Import node-schedule
+const invoiceQueue = require('./jobFunction.js');
 const prisma = new PrismaClient();
+
+// queue.js
+
+
 
 // Function to generate a unique invoice number
 function generateInvoiceNumber(customerId) {
@@ -194,10 +199,10 @@ async function cancelInvoice(invoiceId) {
 }
 
 
-async function cancelSystemGeneratedInvoices(customerId) {
-  try {
- 
 
+async function cancelSystemGeneratedInvoices() {
+  try {
+    // Find the latest system-generated invoice
     const latestInvoice = await prisma.invoice.findFirst({
       where: {
         isSystemGenerated: true,
@@ -208,25 +213,35 @@ async function cancelSystemGeneratedInvoices(customerId) {
     });
 
     if (!latestInvoice) {
-      console.log(`No system-generated invoices found for customer ID ${customerId} created last month.`);
+      console.log('No system-generated invoices found.');
       return null;
     }
+
+    console.log(`Latest invoice found: ID ${latestInvoice.id}, Amount ${latestInvoice.invoiceAmount}`);
+
+    // Calculate the new closing balance
+    const newClosingBalance = latestInvoice.closingBalance - latestInvoice.invoiceAmount;
+    console.log(`Calculating new closing balance: ${latestInvoice.closingBalance} - ${latestInvoice.invoiceAmount} = ${newClosingBalance}`);
 
     // Update the found invoice's status to CANCELLED
     const updatedInvoice = await prisma.invoice.update({
       where: { id: latestInvoice.id },
       data: {
         status: 'CANCELLED', // Change status to CANCELLED
+        closingBalance: newClosingBalance, // Update closing balance
       },
     });
 
-    console.log(`Updated invoice ID ${updatedInvoice.id} to CANCELLED for customer ID ${customerId}.`);
+    console.log(`Updated invoice ID ${updatedInvoice.id} to CANCELLED.`);
     return updatedInvoice;
   } catch (error) {
     console.error('Error updating the latest system-generated invoice:', error);
     throw error; // Re-throw the error for further handling
   }
 }
+
+
+
 
 
 
@@ -247,27 +262,51 @@ async function getAllInvoices(req, res) {
   }
 }
 
-
-// Controller to cancel an invoice by ID
-const cancelInvoiceById = async (req, res) => {
-  const { id } = req.params;
+async function cancelInvoiceById(req, res) {
+  // Extract invoiceId from request parameters
+  const { invoiceId } = req.params;
 
   try {
-    const invoice = await prisma.invoice.update({
-      where: { id: id }, // Use the correct type for MongoDB ObjectId
-      data: { status: 'CANCELLED' }, // Update status to 'CANCELLED'
-      include: { customer: true }, // Include customer details in the response
+    // Fetch the invoice to get the amount and customer ID
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      select: {
+        invoiceAmount: true,
+        customerId: true,
+        closingBalance: true,
+        status: true, // Ensure we get the status for validation
+      },
     });
 
-    return res.status(200).json({ message: 'Invoice cancelled successfully', invoice });
-  } catch (error) {
-    if (error.code === 'P2025') { // Prisma error code for "Record to update not found"
+    // Check if invoice exists
+    if (!invoice) {
       return res.status(404).json({ message: 'Invoice not found' });
     }
+
+    // Check if invoice is already cancelled
+    if (invoice.status === 'CANCELLED') {
+      return res.status(400).json({ message: 'Invoice is already cancelled' });
+    }
+
+    // Calculate the new closing balance
+    const newClosingBalance = invoice.closingBalance - invoice.invoiceAmount;
+
+    // Update the invoice status to 'CANCELLED'
+    const updatedInvoice = await prisma.invoice.update({
+      where: { id: invoiceId },
+      data: {
+        status: 'CANCELLED', // Change status to 'CANCELLED'
+        closingBalance: newClosingBalance, // Update the closing balance
+      },
+    });
+
+    console.log(`Invoice ${updatedInvoice.id} has been cancelled.`);
+    return res.status(200).json({ message: 'Invoice cancelled successfully', invoice: updatedInvoice });
+  } catch (error) {
     console.error('Error cancelling invoice:', error);
-    return res.status(500).json({ message: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
-};
+}
 
 
 // Schedule to run the invoice generation job
@@ -318,5 +357,7 @@ module.exports = {
   getAllInvoices,
 
   cancelInvoiceById,
-  getInvoiceDetails
+  getInvoiceDetails,
+  getCurrentClosingBalance,
+  getCurrentMonthBill
 };

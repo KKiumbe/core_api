@@ -1,20 +1,25 @@
-// controller/createCustomer.js
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient, GarbageCollectionDay } = require('@prisma/client'); // Import the enum
 const prisma = new PrismaClient();
 
 // Create a new customer
 const createCustomer = async (req, res) => {
-    const { firstName, lastName, email, phoneNumber, gender, county, town, location, category, monthlyCharge } = req.body;
+    const { firstName, lastName, email, phoneNumber, gender, county, town, location, category, monthlyCharge, garbageCollectionDay, collected } = req.body;
 
     // Check if all required fields are provided
-    if (!firstName || !lastName || !phoneNumber || !gender || !monthlyCharge) {
+    if (!firstName || !lastName || !phoneNumber || !gender || !monthlyCharge || !garbageCollectionDay) {
         return res.status(400).json({ message: 'Required fields are missing.' });
     }
 
     // Validate the location format: "latitude,longitude"
-    const locationPattern = /^-?\d+\.\d+,-?\d+\.\d+$/; // Regex to validate location
+    const locationPattern = /^-?\d+\.\d+,-?\d+\.\d+$/;
     if (location && !locationPattern.test(location)) {
         return res.status(400).json({ message: 'Invalid location format. Please use "latitude,longitude".' });
+    }
+
+    // Validate the garbage collection day
+    const validCollectionDays = Object.values(GarbageCollectionDay);
+    if (!validCollectionDays.includes(garbageCollectionDay)) {
+        return res.status(400).json({ message: 'Invalid garbage collection day.' });
     }
 
     try {
@@ -27,9 +32,11 @@ const createCustomer = async (req, res) => {
                 gender,
                 county,
                 town,
-                location, // Ensure this is defined
+                location,
                 category,
-                monthlyCharge
+                monthlyCharge,
+                garbageCollectionDay, // Enum value for garbage collection day
+                collected,  // Set to false if not provided
             },
         });
 

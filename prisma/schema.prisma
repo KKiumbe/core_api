@@ -3,7 +3,6 @@ datasource db {
   url      = env("DATABASE_URL") // MongoDB connection string from environment variables
 }
 
-
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
@@ -22,23 +21,36 @@ model User {
 }
 
 model Customer {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  firstName     String
-  lastName      String
-  email         String?  @unique
-  phoneNumber   String   // Assuming phoneNumber is unique for customers
-  gender        String
-  county        String?
-  town          String?
-  location      String?
-  category      String?
-  monthlyCharge Float
+  id                    String                @id @default(auto()) @map("_id") @db.ObjectId
+  firstName             String
+  lastName              String
+  email                 String?               @unique
+  phoneNumber           String
+  gender                String
+  county                String?
+  town                  String?
+  location              String?
+  category              String?
+  monthlyCharge         Float
 
-  // New field for customer status
-  status        CustomerStatus @default(ACTIVE) // Default status is ACTIVE
+  status                CustomerStatus         @default(ACTIVE)
 
-  // Relation to Invoice model
-  invoices      Invoice[] @relation("CustomerInvoices") // Correct relation definition
+  // New field for garbage collection day
+  garbageCollectionDay  GarbageCollectionDay // Enum for days of the week
+
+  invoices              Invoice[]              @relation("CustomerInvoices")
+
+  // Replace collectionStatus and collectionStatusId with a boolean field
+  collected             Boolean                @default(false)  // Indicates whether trash has been collected
+}
+
+// Enum for days of the week
+enum GarbageCollectionDay {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
 }
 
 // Enum for customer status
@@ -69,13 +81,12 @@ enum InvoiceStatus {
   CANCELLED
 }
 
-
 model InvoiceItem {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  invoiceId String   @db.ObjectId // Reference to the Invoice ID
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  invoiceId   String   @db.ObjectId // Reference to the Invoice ID
   description String   // Description of the item
-  amount     Float    // Charge for the item
-  quantity   Int      // Quantity of the item
+  amount      Float    // Charge for the item
+  quantity    Int      // Quantity of the item
 
-  invoice    Invoice  @relation(fields: [invoiceId], references: [id], name: "InvoiceItems")
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], name: "InvoiceItems")
 }

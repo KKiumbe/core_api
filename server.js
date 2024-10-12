@@ -8,6 +8,8 @@ const customerRoutes = require('./routes/customerRoutes.js'); // Import the cust
 const userRoutes = require('./routes/userRoute/userRoute.js'); // Import the customer routes
 const invoiceRoutes = require('./routes/invoices/invoiceRoute.js');
 const mpesaRoute = require('./routes/mpesa/mpesaRoute.js')
+const collectionRoute = require('./routes/collection/collectionRoute.js')
+const sendtoGroup = require('./routes/sms/sendSms.js')
 const cookieParser = require('cookie-parser');
 
 
@@ -32,8 +34,10 @@ mongoose
 // Use customer routes
 app.use('/api', customerRoutes); // Use the customer routes under the '/api' prefix
 app.use('/api', userRoutes);
+app.use('/api', sendtoGroup)
 app.use('/api', invoiceRoutes);
 app.use('/api', mpesaRoute);
+app.use('/api', collectionRoute)
 
 // Start the server
 app.listen(PORT, () => {
