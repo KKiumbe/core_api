@@ -7,7 +7,7 @@ router.post('/callback', async (req, res) => {
     const paymentData = req.body; // M-Pesa sends the payment details in the body
 
     if(!paymentData){
-        res.json('ok')
+        res.json('no payment')
     }
 
     // Handle the payment notification (e.g., save to database, send confirmation, etc.)
