@@ -1,5 +1,8 @@
 const express = require('express');
 const router = express.Router();
+const { PrismaClient } = require('@prisma/client'); // Ensure you have Prisma Client installed
+
+const prisma = new PrismaClient();
 const { lipaNaMpesa } = require('../../controller/mpesa/payment.js');
 
 router.post('/callback', async (req, res) => {
