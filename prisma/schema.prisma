@@ -1,13 +1,16 @@
+// Define the database connection
 datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL") // MongoDB connection string from environment variables
 }
 
+// Generator for Prisma Client
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
+// User model
 model User {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   firstName   String
@@ -20,6 +23,7 @@ model User {
   password    String   // To store hashed passwords
 }
 
+// Customer model
 model Customer {
   id                    String                @id @default(auto()) @map("_id") @db.ObjectId
   firstName             String
@@ -32,16 +36,11 @@ model Customer {
   location              String?
   category              String?
   monthlyCharge         Float
-
   status                CustomerStatus         @default(ACTIVE)
 
-  // New field for garbage collection day
   garbageCollectionDay  GarbageCollectionDay   // Enum for days of the week
-
   invoices              Invoice[]              @relation("CustomerInvoices")
   receipts              Receipt[]              @relation("CustomerReceipts")
-  
-  // Boolean field indicating whether trash has been collected
   collected             Boolean                @default(false)  
 }
 
@@ -52,6 +51,7 @@ enum GarbageCollectionDay {
   WEDNESDAY
   THURSDAY
   FRIDAY
+  SATURDAY
 }
 
 // Enum for customer status
@@ -60,6 +60,7 @@ enum CustomerStatus {
   DORMANT
 }
 
+// Invoice model
 model Invoice {
   id              String       @id @default(auto()) @map("_id") @db.ObjectId
   customerId      String       @db.ObjectId
@@ -67,13 +68,16 @@ model Invoice {
   invoiceNumber   String       // Unique invoice number
   invoiceAmount   Float        
   closingBalance  Float
-  status          InvoiceStatus @default(UNPAID) // Adjusted status with enum
+  status          InvoiceStatus @default(UNPAID) 
   isSystemGenerated Boolean    
   createdAt       DateTime     @default(now())
 
   customer        Customer     @relation(fields: [customerId], references: [id], name: "CustomerInvoices")
   items           InvoiceItem[] @relation("InvoiceItems")
   receipts        Receipt[]     @relation("InvoiceReceipts")
+  
+  // Explicit many-to-many relationship via PaymentInvoice
+  paymentInvoices PaymentInvoice[] @relation("InvoiceToPayment")
 }
 
 // Enum for invoice status
@@ -83,29 +87,29 @@ enum InvoiceStatus {
   CANCELLED
 }
 
+// InvoiceItem model
 model InvoiceItem {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  invoiceId   String   @db.ObjectId // Reference to the Invoice ID
-  description String   // Description of the item
-  amount      Float    // Charge for the item
-  quantity    Int      // Quantity of the item
+  invoiceId   String   @db.ObjectId 
+  description String   
+  amount      Float    
+  quantity    Int      
 
   invoice     Invoice  @relation(fields: [invoiceId], references: [id], name: "InvoiceItems")
 }
 
+// Receipt model
 model Receipt {
   id          String      @id @default(auto()) @map("_id") @db.ObjectId
   customerId  String      @db.ObjectId
   invoiceId   String      @db.ObjectId
-  amount      Float       // Amount paid
-  paymentDate DateTime    @default(now()) // Date of payment
-  modeOfPayment ModeOfPayment // Enum for payment methods
+  amount      Float       
+  paymentDate DateTime    @default(now()) 
+  modeOfPayment ModeOfPayment 
 
   customer    Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade, name: "CustomerReceipts")
   invoice     Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Cascade, name: "InvoiceReceipts")
-  
-  // Add the relation back to Payment
-  payments     Payment[]   @relation("ReceiptPayments") // Relation to the Payment model
+  payments    Payment[]   @relation("ReceiptPayments")
 }
 
 // Enum for payment methods
@@ -115,12 +119,40 @@ enum ModeOfPayment {
   BANK
 }
 
+// Payment model
 model Payment {
-  id          String      @id @default(auto()) @map("_id") @db.ObjectId
-  receiptId   String      @db.ObjectId // Reference to the Receipt
-  amount      Float       // Amount of payment
-  paymentDate DateTime    @default(now()) // Date of payment
-  modeOfPayment ModeOfPayment // Enum for payment methods
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  amount          Float       
+  paymentDate     DateTime    @default(now()) 
+  modeOfPayment   ModeOfPayment 
 
-  receipt     Receipt     @relation(fields: [receiptId], references: [id], onDelete: Cascade, name: "ReceiptPayments")
+  receiptId       String      @db.ObjectId
+  receipt         Receipt     @relation(fields: [receiptId], references: [id], name: "ReceiptPayments", onDelete: Cascade)
+
+  // Explicit many-to-many relationship via PaymentInvoice
+  paymentInvoices PaymentInvoice[] @relation("PaymentToInvoice")
+}
+
+// MpesaTransaction model for tracking MPESA transactions separately
+model MpesaTransaction {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  TransID         String      
+  TransTime       DateTime    
+  TransAmount     Float       
+  BillRefNumber   String      
+  MSISDN          String      
+  FirstName       String      
+  processed       Boolean     @default(false) 
+
+  createdAt       DateTime    @default(now()) 
+}
+
+// PaymentInvoice model (explicit many-to-many relation)
+model PaymentInvoice {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId // Adding a unique ID for the PaymentInvoice model
+  paymentId   String      @db.ObjectId
+  invoiceId   String      @db.ObjectId
+
+  payment     Payment     @relation(fields: [paymentId], references: [id], onDelete: Cascade, name: "PaymentToInvoice")
+  invoice     Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Cascade, name: "InvoiceToPayment")
 }
