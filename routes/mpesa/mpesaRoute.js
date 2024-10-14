@@ -11,7 +11,7 @@ router.post('/callback', async (req, res) => {
     }
 
     // Handle the payment notification (e.g., save to database, send confirmation, etc.)
-    console.log('Payment Notification Received:', paymentData.body);
+    console.log('Payment Notification Received:', paymentData);
     console.log(paymentData.Body.CallbackMetadata);
     
     // Send a response back to M-Pesa

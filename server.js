@@ -10,7 +10,9 @@ const invoiceRoutes = require('./routes/invoices/invoiceRoute.js');
 const mpesaRoute = require('./routes/mpesa/mpesaRoute.js')
 const collectionRoute = require('./routes/collection/collectionRoute.js')
 const sendtoGroup = require('./routes/sms/sendSms.js')
+const receiptRoute  = require('./routes/receipt/receiptingRoute.js')
 const cookieParser = require('cookie-parser');
+
 
 
 const app = express();
@@ -38,6 +40,7 @@ app.use('/api', sendtoGroup)
 app.use('/api', invoiceRoutes);
 app.use('/api', mpesaRoute);
 app.use('/api', collectionRoute)
+app.use('/api', receiptRoute)
 
 // Start the server
 app.listen(PORT, () => {
