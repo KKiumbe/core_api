@@ -139,7 +139,7 @@ model MpesaTransaction {
   id              String      @id @default(auto()) @map("_id") @db.ObjectId
   TransID         String      
   TransTime       DateTime    
-  TransAmount     String       
+  TransAmount     Float       
   BillRefNumber   String      
   MSISDN          String      
   FirstName       String      
