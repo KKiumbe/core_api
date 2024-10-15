@@ -17,16 +17,13 @@ async function settleInvoice() {
         for (const transaction of mpesaTransactions) {
             const { BillRefNumber, TransAmount, id, FirstName, MSISDN: phone, TransID: MpesaCode } = transaction;
 
-            // Log the transaction being processed
             console.log(`Processing transaction: ${id} for amount: ${TransAmount}`);
 
-            // Ensure TransAmount is a number
             const paymentAmount = parseFloat(TransAmount);
 
-            // Check if paymentAmount is valid
             if (isNaN(paymentAmount) || paymentAmount <= 0) {
                 console.log(`Invalid payment amount for transaction ${id}. Skipping.`);
-                continue; // Skip invalid amounts
+                continue;
             }
 
             // Step 3: Find the customer by matching the BillRefNumber (phone number)
@@ -36,8 +33,17 @@ async function settleInvoice() {
             });
 
             if (!customer) {
-                console.log(`No customer found with phone number ${BillRefNumber}`);
-                continue; // Skip if no customer found
+                // Save the transaction in Payment with receipted: false
+                await prisma.payment.create({
+                    data: {
+                        amount: paymentAmount,
+                        modeOfPayment: 'MPESA',
+                        mpesaTransactionId: MpesaCode,
+                        receipted: false,
+                    },
+                });
+                console.log(`No customer found with BillRefNumber ${BillRefNumber}. Transaction saved with receipted: false.`);
+                continue;
             }
 
             // Step 4: Find unpaid invoices for the customer
@@ -46,7 +52,6 @@ async function settleInvoice() {
                 orderBy: { createdAt: 'asc' },
             });
 
-            // If there are no unpaid invoices, update closing balance as overpayment
             if (invoices.length === 0) {
                 await prisma.customer.update({
                     where: { id: customer.id },
@@ -55,10 +60,19 @@ async function settleInvoice() {
                     },
                 });
                 console.log(`No unpaid invoices found for customer ${customer.id}. Overpayment added to closing balance.`);
+
+                // Save the payment in Payment with receipted: false
+                await prisma.payment.create({
+                    data: {
+                        amount: paymentAmount,
+                        modeOfPayment: 'MPESA',
+                        mpesaTransactionId: MpesaCode,
+                        receipted: true,
+                    },
+                });
                 continue;
             }
 
-            // Step 5: Process invoices
             let remainingAmount = paymentAmount;
 
             for (const invoice of invoices) {
@@ -67,7 +81,6 @@ async function settleInvoice() {
                 const invoiceDueAmount = invoice.invoiceAmount - invoice.amountPaid;
 
                 if (remainingAmount >= invoiceDueAmount) {
-                    // Fully pay this invoice
                     remainingAmount -= invoiceDueAmount;
 
                     await prisma.invoice.update({
@@ -78,20 +91,29 @@ async function settleInvoice() {
                         },
                     });
 
-                    // Create a receipt for this full payment with Mpesa transaction details
+                    // Create a new payment for this receipt
+                    const newPayment = await prisma.payment.create({
+                        data: {
+                            amount: invoiceDueAmount,
+                            modeOfPayment: 'MPESA',
+                            mpesaTransactionId: MpesaCode,
+                            receipted: true,
+                        },
+                    });
+
                     await prisma.receipt.create({
                         data: {
                             customerId: customer.id,
                             invoiceId: invoice.id,
-                            amount: invoice.invoiceAmount,
+                            amount: invoiceDueAmount,
                             modeOfPayment: 'MPESA',
                             paidBy: FirstName,
                             transactionCode: MpesaCode,
                             phoneNumber: phone,
+                            paymentId: newPayment.id, // Link the created payment
                         },
                     });
                 } else {
-                    // Partially pay this invoice
                     await prisma.invoice.update({
                         where: { id: invoice.id },
                         data: {
@@ -99,7 +121,16 @@ async function settleInvoice() {
                         },
                     });
 
-                    // Create a receipt for this partial payment with Mpesa transaction details
+                    // Create a new payment for this receipt
+                    const newPayment = await prisma.payment.create({
+                        data: {
+                            amount: remainingAmount,
+                            modeOfPayment: 'MPESA',
+                            mpesaTransactionId: MpesaCode,
+                            receipted: true,
+                        },
+                    });
+
                     await prisma.receipt.create({
                         data: {
                             customerId: customer.id,
@@ -109,14 +140,14 @@ async function settleInvoice() {
                             paidBy: FirstName,
                             transactionCode: MpesaCode,
                             phoneNumber: phone,
+                            paymentId: newPayment.id, // Link the created payment
                         },
                     });
 
-                    remainingAmount = 0; // Remaining amount exhausted
+                    remainingAmount = 0;
                 }
             }
 
-            // Step 6: Update closing balance if there's an overpayment
             if (remainingAmount > 0) {
                 await prisma.customer.update({
                     where: { id: customer.id },
@@ -127,9 +158,8 @@ async function settleInvoice() {
                 console.log(`Customer ${customer.id} overpaid. Closing balance adjusted by ${remainingAmount}.`);
             }
 
-            // Step 7: Mark the Mpesa transaction as processed
             await prisma.mpesaTransaction.update({
-                where: { id: id }, // Use 'id' here consistently
+                where: { id: id },
                 data: { processed: true },
             });
 
