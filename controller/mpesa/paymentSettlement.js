@@ -1,6 +1,12 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Helper function to generate a receipt number with "RCPT" prefix
+function generateReceiptNumber() {
+    const randomDigits = Math.floor(10000 + Math.random() * 90000); // Generates a number between 10000 and 99999
+    return `RCPT${randomDigits}`; // Prefix with "RCPT"
+}
+
 async function settleInvoice() {
     try {
         // Step 1: Retrieve all unprocessed Mpesa transactions
@@ -83,6 +89,7 @@ async function settleInvoice() {
                 if (remainingAmount >= invoiceDueAmount) {
                     remainingAmount -= invoiceDueAmount;
 
+                    // Update invoice to paid
                     await prisma.invoice.update({
                         where: { id: invoice.id },
                         data: {
@@ -101,19 +108,29 @@ async function settleInvoice() {
                         },
                     });
 
+                    // Generate a receipt number with "RCPT" prefix
+                    const receiptNumber = generateReceiptNumber();
+
+                    // Create the receipt and associate it with the invoice
                     await prisma.receipt.create({
                         data: {
-                            customerId: customer.id,
-                            invoiceId: invoice.id,
                             amount: invoiceDueAmount,
                             modeOfPayment: 'MPESA',
                             paidBy: FirstName,
                             transactionCode: MpesaCode,
                             phoneNumber: phone,
                             paymentId: newPayment.id, // Link the created payment
+                            customerId: customer.id, // Include customerId
+                            receiptInvoices: {
+                                create: {
+                                    invoiceId: invoice.id, // Establish the many-to-many relationship
+                                },
+                            },
+                            receiptNumber: receiptNumber, // Add receipt number
                         },
                     });
                 } else {
+                    // Partial payment for the invoice
                     await prisma.invoice.update({
                         where: { id: invoice.id },
                         data: {
@@ -131,16 +148,24 @@ async function settleInvoice() {
                         },
                     });
 
+                    // Generate a receipt number with "RCPT" prefix
+                    const receiptNumber = generateReceiptNumber();
+
                     await prisma.receipt.create({
                         data: {
-                            customerId: customer.id,
-                            invoiceId: invoice.id,
                             amount: remainingAmount,
                             modeOfPayment: 'MPESA',
                             paidBy: FirstName,
                             transactionCode: MpesaCode,
                             phoneNumber: phone,
                             paymentId: newPayment.id, // Link the created payment
+                            customerId: customer.id, // Include customerId
+                            receiptInvoices: {
+                                create: {
+                                    invoiceId: invoice.id, // Establish the many-to-many relationship
+                                },
+                            },
+                            receiptNumber: receiptNumber, // Add receipt number
                         },
                     });
 
@@ -148,6 +173,7 @@ async function settleInvoice() {
                 }
             }
 
+            // Handle any remaining amount after processing invoices
             if (remainingAmount > 0) {
                 await prisma.customer.update({
                     where: { id: customer.id },
@@ -158,6 +184,7 @@ async function settleInvoice() {
                 console.log(`Customer ${customer.id} overpaid. Closing balance adjusted by ${remainingAmount}.`);
             }
 
+            // Mark the Mpesa transaction as processed
             await prisma.mpesaTransaction.update({
                 where: { id: id },
                 data: { processed: true },

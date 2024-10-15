@@ -108,6 +108,8 @@ enum ModeOfPayment {
 // Receipt model
 model Receipt {
   id             String      @id @default(auto()) @map("_id") @db.ObjectId
+  receiptNumber   String      @unique // Ensure uniqueness of the receipt number
+
   amount         Float
   modeOfPayment  ModeOfPayment
   paidBy         String
