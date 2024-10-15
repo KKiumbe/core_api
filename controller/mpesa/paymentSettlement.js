@@ -15,16 +15,15 @@ async function settleInvoice() {
 
         // Step 2: Loop through each unprocessed Mpesa transaction
         for (const transaction of mpesaTransactions) {
-            const { BillRefNumber, TransAmount, _id: transactionId } = transaction;
+            const { BillRefNumber, TransAmount, id: transactionId } = transaction; // Ensure 'id' is used if '_id' is not defined
 
-            // Log the transaction being processed
             console.log(`Processing transaction: ${transactionId} for amount: ${TransAmount}`);
 
-            // Convert TransAmount to a number
+            // Convert TransAmount to a float
             const paymentAmount = parseFloat(TransAmount);
             if (isNaN(paymentAmount) || paymentAmount <= 0) {
                 console.log(`Invalid payment amount for transaction ${transactionId}. Skipping.`);
-                continue; // Skip invalid amounts
+                continue;
             }
 
             // Step 3: Find the customer by matching the BillRefNumber (phone number)
@@ -121,7 +120,7 @@ async function settleInvoice() {
 
             // Step 7: Mark the Mpesa transaction as processed
             await prisma.mpesaTransaction.update({
-                where: { _id: transactionId },
+                where: { id: transactionId },
                 data: { processed: true },
             });
 
