@@ -59,15 +59,16 @@ async function settleInvoice() {
             });
 
             if (invoices.length === 0) {
+                // No unpaid invoices, overpayment scenario, update closing balance
                 await prisma.customer.update({
                     where: { id: customer.id },
                     data: {
-                        closingBalance: customer.closingBalance + paymentAmount,
+                        closingBalance: customer.closingBalance - paymentAmount,
                     },
                 });
                 console.log(`No unpaid invoices found for customer ${customer.id}. Overpayment added to closing balance.`);
 
-                // Save the payment in Payment with receipted: false
+                // Save the payment in Payment with receipted: true
                 await prisma.payment.create({
                     data: {
                         amount: paymentAmount,
@@ -173,12 +174,13 @@ async function settleInvoice() {
                 }
             }
 
-            // Handle any remaining amount after processing invoices
+            // Handle any remaining amount after processing invoices (overpayment scenario)
             if (remainingAmount > 0) {
+                // Update the customer's closing balance to reflect the overpayment
                 await prisma.customer.update({
                     where: { id: customer.id },
                     data: {
-                        closingBalance: customer.closingBalance + remainingAmount,
+                        closingBalance: customer.closingBalance - remainingAmount,
                     },
                 });
                 console.log(`Customer ${customer.id} overpaid. Closing balance adjusted by ${remainingAmount}.`);
