@@ -13,7 +13,7 @@ router.post('/callback', async (req, res) => {
     const paymentInfo = {
         TransID: paymentData.TransID,
         TransTime: parseTransTime(paymentData.TransTime),
-        TransAmount: parseFloat(paymentData.TransAmount),
+        TransAmount: paymentData.TransAmount.toString(),
         ref: paymentData.BillRefNumber,
         phone: paymentData.MSISDN,
         FirstName: paymentData.FirstName
