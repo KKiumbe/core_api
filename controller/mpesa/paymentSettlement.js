@@ -15,13 +15,13 @@ async function settleInvoice() {
 
         // Step 2: Loop through each unprocessed Mpesa transaction
         for (const transaction of mpesaTransactions) {
-            const { BillRefNumber, TransAmount, id, FirstName, MSISD: phone, TransID: MpesaCode } = transaction;
+            const { BillRefNumber, TransAmount, id, FirstName, MSISDN: phone, TransID: MpesaCode } = transaction;
 
             // Log the transaction being processed
             console.log(`Processing transaction: ${id} for amount: ${TransAmount}`);
 
             // Ensure TransAmount is a number
-            const paymentAmount = TransAmount;
+            const paymentAmount = parseFloat(TransAmount);
 
             // Check if paymentAmount is valid
             if (isNaN(paymentAmount) || paymentAmount <= 0) {
