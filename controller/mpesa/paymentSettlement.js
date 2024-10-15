@@ -15,7 +15,7 @@ async function settleInvoice() {
 
         // Step 2: Loop through each unprocessed Mpesa transaction
         for (const transaction of mpesaTransactions) {
-            const { BillRefNumber, TransAmount, _id: transactionId } = transaction;
+            const { BillRefNumber, TransAmount, _id: transactionId, FirstName, MSISD: phone, TransID: MpesaCode } = transaction;
 
             // Log the transaction being processed
             console.log(`Processing transaction: ${transactionId} for amount: ${TransAmount}`);
@@ -78,13 +78,16 @@ async function settleInvoice() {
                         },
                     });
 
-                    // Create a receipt for this full payment
+                    // Create a receipt for this full payment with Mpesa transaction details
                     await prisma.receipt.create({
                         data: {
                             customerId: customer.id,
                             invoiceId: invoice.id,
                             amount: invoice.invoiceAmount,
                             modeOfPayment: 'MPESA',
+                            paidBy: FirstName,
+                            transactionCode: MpesaCode,
+                            phoneNumber: phone,
                         },
                     });
                 } else {
@@ -96,13 +99,16 @@ async function settleInvoice() {
                         },
                     });
 
-                    // Create a receipt for this partial payment
+                    // Create a receipt for this partial payment with Mpesa transaction details
                     await prisma.receipt.create({
                         data: {
                             customerId: customer.id,
                             invoiceId: invoice.id,
                             amount: remainingAmount,
                             modeOfPayment: 'MPESA',
+                            paidBy: FirstName,
+                            transactionCode: MpesaCode,
+                            phoneNumber: phone,
                         },
                     });
 
@@ -123,7 +129,7 @@ async function settleInvoice() {
 
             // Step 7: Mark the Mpesa transaction as processed
             await prisma.mpesaTransaction.update({
-                where: { _id: transactionId },
+                where: { id: transactionId },
                 data: { processed: true },
             });
 
