@@ -1,11 +1,10 @@
 const express = require('express');
-const { receiptUser, getUnpaidInvoices, searchReceipts } = require('../../controller/receipting/receiptUser.js');
+const { manualReceipt } = require('../../controller/receipting/manualReceipting.js');
 
 const router = express.Router();
 
-router.post('/receipt-invoices', receiptUser);
-router.get('/receipts', searchReceipts);
-router.get('/receipt/unpaid-invoices/:customerID', getUnpaidInvoices);
+router.post('/manual-receipt', manualReceipt);
+
 
 module.exports = router;
 

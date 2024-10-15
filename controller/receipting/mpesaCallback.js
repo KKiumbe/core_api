@@ -1,9 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client'); // Ensure you have Prisma Client installed
-const { lipaNaMpesa } = require('../../controller/mpesa/payment.js');
-const prisma = new PrismaClient(); // Create a single instance of PrismaClient
-const { settleInvoice } = require('../../controller/mpesa/paymentSettlement.js');
+const { lipaNaMpesa } = require('../mpesa/payment.js');
+const prisma = require('../../prismaClient'); // Adjust the import based on your setup
 
 router.post('/callback', async (req, res) => {
     const paymentData = req.body; // M-Pesa sends the payment details in the body
@@ -41,13 +39,13 @@ router.post('/callback', async (req, res) => {
 
         // Settle invoice if there's a match
         const customer = await prisma.customer.findFirst({
-            where: { phoneNumber: paymentInfo.ref }, // Use 'phoneNumber' for querying
+            where: { phoneNumber: paymentInfo.ref },
         });
 
         if (customer) {
             // Automatically settle the invoice
             await settleInvoice(customer.id, paymentInfo.TransAmount);
-            console.log(`Invoice for customer ${customer.phoneNumber} settled.`);
+            console.log(`Invoice for customer ${customer.phone} settled.`);
         } else {
             // Handle manual matching process
             console.log(`No matching customer found for BillRefNumber: ${paymentInfo.ref}.`);
@@ -72,6 +70,8 @@ function parseTransTime(transTime) {
     
     return new Date(year, month, day, hours, minutes, seconds);
 }
+
+
 
 // Route to handle Lipa Na M-Pesa requests
 router.post('/lipa', lipaNaMpesa); // Use the controller function

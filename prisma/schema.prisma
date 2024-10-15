@@ -37,11 +37,11 @@ model Customer {
   category              String?
   monthlyCharge         Float
   status                CustomerStatus         @default(ACTIVE)
-
   garbageCollectionDay  GarbageCollectionDay   // Enum for days of the week
   invoices              Invoice[]              @relation("CustomerInvoices")
   receipts              Receipt[]              @relation("CustomerReceipts")
   collected             Boolean                @default(false)  
+  closingBalance        Float                  @default(0) // Add closing balance field
 }
 
 // Enum for days of the week
@@ -62,22 +62,23 @@ enum CustomerStatus {
 
 // Invoice model
 model Invoice {
-  id              String       @id @default(auto()) @map("_id") @db.ObjectId
-  customerId      String       @db.ObjectId
-  invoicePeriod   DateTime
-  invoiceNumber   String       // Unique invoice number
-  invoiceAmount   Float        
-  closingBalance  Float
-  status          InvoiceStatus @default(UNPAID) 
-  isSystemGenerated Boolean    
-  createdAt       DateTime     @default(now())
+  id                  String       @id @default(auto()) @map("_id") @db.ObjectId
+  customerId          String       @db.ObjectId
+  invoicePeriod       DateTime
+  invoiceNumber       String       // Unique invoice number
+  invoiceAmount       Float        
+  closingBalance      Float        // To track the balance for this invoice
+  status              InvoiceStatus @default(UNPAID) 
+  isSystemGenerated   Boolean    
+  createdAt           DateTime     @default(now())
+  amountPaid          Float        @default(0) // Track the amount paid for this invoice
 
-  customer        Customer     @relation(fields: [customerId], references: [id], name: "CustomerInvoices")
-  items           InvoiceItem[] @relation("InvoiceItems")
-  receipts        Receipt[]     @relation("InvoiceReceipts")
+  customer            Customer     @relation(fields: [customerId], references: [id], name: "CustomerInvoices")
+  items               InvoiceItem[] @relation("InvoiceItems")
+  receipts            Receipt[]     @relation("InvoiceReceipts")
   
   // Explicit many-to-many relationship via PaymentInvoice
-  paymentInvoices PaymentInvoice[] @relation("InvoiceToPayment")
+  paymentInvoices     PaymentInvoice[] @relation("InvoiceToPayment")
 }
 
 // Enum for invoice status
