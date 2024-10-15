@@ -29,7 +29,7 @@ model Customer {
   firstName             String
   lastName              String
   email                 String?               @unique
-  phoneNumber           String
+  phoneNumber           String @unique
   gender                String
   county                String?
   town                  String?
