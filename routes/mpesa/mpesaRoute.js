@@ -5,6 +5,7 @@ const { lipaNaMpesa } = require('../../controller/mpesa/payment.js');
 const prisma = new PrismaClient(); // Create a single instance of PrismaClient
 const { settleInvoice } = require('../../controller/mpesa/paymentSettlement.js');
 
+// Route to handle M-Pesa callback notifications
 router.post('/callback', async (req, res) => {
     const paymentData = req.body; // M-Pesa sends the payment details in the body
 
@@ -18,14 +19,14 @@ router.post('/callback', async (req, res) => {
         TransAmount: parseFloat(paymentData.TransAmount),
         ref: paymentData.BillRefNumber,
         phone: paymentData.MSISDN,
-        FirstName: paymentData.FirstName
+        FirstName: paymentData.FirstName,
     };
 
     // Log the payment info
     console.log('Payment Notification Received:', paymentInfo);
 
     try {
-        // Save the payment transaction
+        // Save the payment transaction to the database
         const transaction = await prisma.mpesaTransaction.create({
             data: {
                 TransID: paymentInfo.TransID,
@@ -34,30 +35,20 @@ router.post('/callback', async (req, res) => {
                 BillRefNumber: paymentInfo.ref,
                 MSISDN: paymentInfo.phone,
                 FirstName: paymentInfo.FirstName,
+                processed: false, // Set to false initially to indicate unprocessed transaction
             },
         });
 
-        console.log('Payment info saved to the database.');
+        console.log('Payment info saved to the database:', transaction);
 
-        // Settle invoice if there's a match
-        const customer = await prisma.customer.findFirst({
-            where: { phoneNumber: paymentInfo.ref }, // Use 'phoneNumber' for querying
-        });
+        // Trigger invoice settlement process
+        await settleInvoice(); // Ensure settleInvoice is correctly implemented to process invoices
 
-        if (customer) {
-            // Automatically settle the invoice
-            await settleInvoice(customer.id, paymentInfo.TransAmount);
-            console.log(`Invoice for customer ${customer.phoneNumber} settled.`);
-        } else {
-            // Handle manual matching process
-            console.log(`No matching customer found for BillRefNumber: ${paymentInfo.ref}.`);
-            // Here you could implement logic to notify an admin or record for manual matching
-        }
-
+        // Respond with a success message
         res.status(200).json({ message: 'Payment processed successfully.' });
     } catch (error) {
         console.error('Error processing payment:', error);
-        res.status(500).json({ error: 'Failed to process payment.' });
+        res.status(500).json({ message: 'Error processing payment.', error: error.message });
     }
 });
 
