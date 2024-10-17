@@ -26,7 +26,6 @@ async function settleInvoice() {
             console.log(`Processing transaction: ${id} for amount: ${TransAmount}`);
 
             const paymentAmount = parseFloat(TransAmount);
-
             if (isNaN(paymentAmount) || paymentAmount <= 0) {
                 console.log(`Invalid payment amount for transaction ${id}. Skipping.`);
                 continue;
@@ -58,29 +57,8 @@ async function settleInvoice() {
                 orderBy: { createdAt: 'asc' },
             });
 
-            if (invoices.length === 0) {
-                // No unpaid invoices, overpayment scenario, update closing balance
-                await prisma.customer.update({
-                    where: { id: customer.id },
-                    data: {
-                        closingBalance: customer.closingBalance - paymentAmount,
-                    },
-                });
-                console.log(`No unpaid invoices found for customer ${customer.id}. Overpayment added to closing balance.`);
-
-                // Save the payment in Payment with receipted: true
-                await prisma.payment.create({
-                    data: {
-                        amount: paymentAmount,
-                        modeOfPayment: 'MPESA',
-                        mpesaTransactionId: MpesaCode,
-                        receipted: true,
-                    },
-                });
-                continue;
-            }
-
             let remainingAmount = paymentAmount;
+            let totalAmountAppliedToInvoices = 0;
 
             for (const invoice of invoices) {
                 if (remainingAmount <= 0) break;
@@ -89,6 +67,7 @@ async function settleInvoice() {
 
                 if (remainingAmount >= invoiceDueAmount) {
                     remainingAmount -= invoiceDueAmount;
+                    totalAmountAppliedToInvoices += invoiceDueAmount;
 
                     // Update invoice to paid
                     await prisma.invoice.update({
@@ -109,29 +88,12 @@ async function settleInvoice() {
                         },
                     });
 
-                    // Generate a receipt number with "RCPT" prefix
-                    const receiptNumber = generateReceiptNumber();
-
-                    // Create the receipt and associate it with the invoice
-                    await prisma.receipt.create({
-                        data: {
-                            amount: invoiceDueAmount,
-                            modeOfPayment: 'MPESA',
-                            paidBy: FirstName,
-                            transactionCode: MpesaCode,
-                            phoneNumber: phone,
-                            paymentId: newPayment.id, // Link the created payment
-                            customerId: customer.id, // Include customerId
-                            receiptInvoices: {
-                                create: {
-                                    invoiceId: invoice.id, // Establish the many-to-many relationship
-                                },
-                            },
-                            receiptNumber: receiptNumber, // Add receipt number
-                        },
-                    });
+                    // Generate and save receipt
+                    await createReceipt(invoiceDueAmount, MpesaCode, FirstName, phone, customer.id, invoice.id, newPayment.id);
                 } else {
                     // Partial payment for the invoice
+                    totalAmountAppliedToInvoices += remainingAmount;
+
                     await prisma.invoice.update({
                         where: { id: invoice.id },
                         data: {
@@ -149,42 +111,26 @@ async function settleInvoice() {
                         },
                     });
 
-                    // Generate a receipt number with "RCPT" prefix
-                    const receiptNumber = generateReceiptNumber();
-
-                    await prisma.receipt.create({
-                        data: {
-                            amount: remainingAmount,
-                            modeOfPayment: 'MPESA',
-                            paidBy: FirstName,
-                            transactionCode: MpesaCode,
-                            phoneNumber: phone,
-                            paymentId: newPayment.id, // Link the created payment
-                            customerId: customer.id, // Include customerId
-                            receiptInvoices: {
-                                create: {
-                                    invoiceId: invoice.id, // Establish the many-to-many relationship
-                                },
-                            },
-                            receiptNumber: receiptNumber, // Add receipt number
-                        },
-                    });
+                    // Generate and save receipt
+                    await createReceipt(remainingAmount, MpesaCode, FirstName, phone, customer.id, invoice.id, newPayment.id);
 
                     remainingAmount = 0;
                 }
             }
 
-            // Handle any remaining amount after processing invoices (overpayment scenario)
+            // Step 5: Handle overpayment scenario
             if (remainingAmount > 0) {
-                // Update the customer's closing balance to reflect the overpayment
-                await prisma.customer.update({
-                    where: { id: customer.id },
-                    data: {
-                        closingBalance: customer.closingBalance - remainingAmount,
-                    },
-                });
+                totalAmountAppliedToInvoices += remainingAmount;
                 console.log(`Customer ${customer.id} overpaid. Closing balance adjusted by ${remainingAmount}.`);
             }
+
+            // Step 6: Update the customer's closing balance with total amount applied to invoices or overpayment
+            await prisma.customer.update({
+                where: { id: customer.id },
+                data: {
+                    closingBalance: customer.closingBalance - totalAmountAppliedToInvoices,
+                },
+            });
 
             // Mark the Mpesa transaction as processed
             await prisma.mpesaTransaction.update({
@@ -198,5 +144,26 @@ async function settleInvoice() {
         console.error('Error processing Mpesa transactions in settleInvoice:', error);
     }
 }
+
+// Helper function to create receipt
+async function createReceipt(amount, MpesaCode, FirstName, phone, customerId, invoiceId, paymentId) {
+    const receiptNumber = generateReceiptNumber();
+    await prisma.receipt.create({
+        data: {
+            amount: amount,
+            modeOfPayment: 'MPESA',
+            paidBy: FirstName,
+            transactionCode: MpesaCode,
+            phoneNumber: phone,
+            paymentId: paymentId, 
+            customerId: customerId, 
+            receiptInvoices: {
+                create: { invoiceId: invoiceId },
+            },
+            receiptNumber: receiptNumber,
+        },
+    });
+}
+
 
 module.exports = { settleInvoice };
