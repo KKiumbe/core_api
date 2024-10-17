@@ -1,6 +1,11 @@
 const { PrismaClient } = require('@prisma/client');
-
 const prisma = new PrismaClient();
+
+// Helper function to generate a receipt number with "RCPT" prefix
+function generateReceiptNumber() {
+    const randomDigits = Math.floor(10000 + Math.random() * 90000); // Generates a number between 10000 and 99999
+    return `RCPT${randomDigits}`; // Prefix with "RCPT"
+}
 
 // Controller function to manually create receipts for all unpaid invoices of a customer
 const manualReceipt = async (req, res) => {
@@ -66,6 +71,9 @@ const manualReceipt = async (req, res) => {
 
             updatedInvoices.push(updatedInvoice);
 
+            // Generate a unique receipt number
+            const receiptNumber = generateReceiptNumber();
+
             // Create a receipt for the payment
             const receipt = await prisma.receipt.create({
                 data: {
@@ -73,6 +81,7 @@ const manualReceipt = async (req, res) => {
                     invoiceId: updatedInvoice.id,
                     amount: paymentForInvoice,
                     modeOfPayment: modeOfPayment, // Use the provided payment method
+                    receiptNumber: receiptNumber,  // Add receipt number here
                 },
             });
 
