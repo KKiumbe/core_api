@@ -23,6 +23,16 @@ const createCustomer = async (req, res) => {
     }
 
     try {
+        // Check if phone number already exists
+        const existingCustomer = await prisma.customer.findUnique({
+            where: { phoneNumber },
+        });
+
+        if (existingCustomer) {
+            return res.status(400).json({ message: 'Phone number already exists.' });
+        }
+
+        // Create the customer if the phone number is unique
         const customer = await prisma.customer.create({
             data: {
                 firstName,
@@ -36,13 +46,18 @@ const createCustomer = async (req, res) => {
                 category,
                 monthlyCharge,
                 garbageCollectionDay, // Enum value for garbage collection day
-                collected,  // Set to false if not provided
+                collected: collected ?? false, // Set collected to false if not provided
             },
         });
 
         res.status(201).json(customer); // Respond with the created customer data
     } catch (error) {
         console.error('Error creating customer:', error);
+
+        if (error.code === 'P2002' && error.meta && error.meta.target.includes('phoneNumber')) {
+            return res.status(400).json({ message: 'Phone number must be unique.' });
+        }
+
         res.status(500).json({ message: 'Internal server error' });
     }
 };
