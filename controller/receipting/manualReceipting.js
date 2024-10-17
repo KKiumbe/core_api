@@ -113,7 +113,7 @@ const manualReceipt = async (req, res) => {
             });
             return res.status(200).json({
                 message: 'Payment processed successfully, but closing balance is negative due to overpayment.',
-                receipts,
+                receipts: receipts.map(r => r.id), // Return only receipt IDs
                 updatedInvoices,
                 payments,
                 newClosingBalance,
@@ -129,7 +129,7 @@ const manualReceipt = async (req, res) => {
 
         res.status(201).json({
             message: 'Receipts created successfully.',
-            receipts,
+            receipts: receipts.map(r => r.id), // Return only receipt IDs
             updatedInvoices,
             payments,
             newClosingBalance,
