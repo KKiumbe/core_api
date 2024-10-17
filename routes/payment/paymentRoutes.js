@@ -1,8 +1,10 @@
 const express = require('express');
-const { fetchAllPayments } = require('../../controller/payments/getAllPayments.js');
+const { fetchAllPayments, fetchPaymentById } = require('../../controller/payments/getAllPayments.js');
 
 const router = express.Router();
 
-router.use('/payments', fetchAllPayments);
+router.get('/payments', fetchAllPayments);
+router.get('/payments/:paymentId', fetchPaymentById);
+
 
 module.exports = router;
