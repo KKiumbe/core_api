@@ -9,9 +9,9 @@ function generateReceiptNumber() {
 
 // Controller function to manually create receipts for all unpaid invoices of a customer
 const manualReceipt = async (req, res) => {
-    const { customerId, totalAmount, modeOfPayment } = req.body;
+    const { customerId, totalAmount, modeOfPayment, paidBy } = req.body;
 
-    if (!customerId || !totalAmount || !modeOfPayment) {
+    if (!customerId || !totalAmount || !modeOfPayment || !paidBy) {
         return res.status(400).json({ message: 'Missing required fields.' });
     }
 
@@ -74,29 +74,29 @@ const manualReceipt = async (req, res) => {
             // Generate a unique receipt number
             const receiptNumber = generateReceiptNumber();
 
-            // Create a receipt for the payment
-            const receipt = await prisma.receipt.create({
-                data: {
-                    customerId: customerId,
-                    invoiceId: updatedInvoice.id,
-                    amount: paymentForInvoice,
-                    modeOfPayment: modeOfPayment, // Use the provided payment method
-                    receiptNumber: receiptNumber,  // Add receipt number here
-                },
-            });
-
-            receipts.push(receipt);
-
-            // Create a payment record for the receipt
+            // Create a payment record first
             const payment = await prisma.payment.create({
                 data: {
                     amount: paymentForInvoice,
                     modeOfPayment: modeOfPayment,
-                    receiptId: receipt.id, // Link payment to the created receipt
                 },
             });
 
             payments.push(payment);
+
+            // Create a receipt for the payment
+            const receipt = await prisma.receipt.create({
+                data: {
+                    customerId: customerId,
+                    amount: paymentForInvoice,
+                    modeOfPayment: modeOfPayment, // Use the provided payment method
+                    receiptNumber: receiptNumber,  // Add receipt number here
+                    paymentId: payment.id,  // Link the created payment
+                    paidBy: paidBy,  // Include the paidBy field (from request body or other source)
+                },
+            });
+
+            receipts.push(receipt);
 
             // Deduct the payment amount from remainingAmount
             remainingAmount -= paymentForInvoice;
