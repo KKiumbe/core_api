@@ -112,9 +112,9 @@ model Receipt {
 
   amount         Float
   modeOfPayment  ModeOfPayment
-  paidBy         String
-  transactionCode String
-  phoneNumber    String
+  paidBy         String?
+  transactionCode String?
+  phoneNumber    String?
   paymentId      String   @unique @db.ObjectId // Link to Payment
   payment        Payment     @relation(fields: [paymentId], references: [id]) 
 
