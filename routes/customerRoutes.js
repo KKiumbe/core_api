@@ -1,10 +1,11 @@
 // routes/customerRoutes.js
 const express = require('express');
-const { createCustomer } = require('../controller/createCustomer.js');
-const { getAllCustomers } = require('../controller/getAllCustomers.js');
-const { editCustomer } = require('../controller/editCustomer.js');
-const { SearchCustomers } = require('../controller/searchCustomers.js');
 const { verifyToken } = require('../middleware/verifyToken.js');
+const { createCustomer } = require('../controller/customers/createCustomer.js');
+const { getAllCustomers } = require('../controller/customers/getAllCustomers.js');
+const { editCustomer } = require('../controller/customers/editCustomer.js');
+const { SearchCustomers } = require('../controller/customers/searchCustomers.js');
+
 
 
 const router = express.Router();

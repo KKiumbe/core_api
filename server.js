@@ -42,7 +42,7 @@ app.use('/api', invoiceRoutes);
 app.use('/api', mpesaRoute);
 app.use('/api', collectionRoute)
 app.use('/api', receiptRoute)
-app.use('/api', paymentRoute)
+app.use('/api', paymentRoute)  //payment
 
 // Start the server
 app.listen(PORT, () => {

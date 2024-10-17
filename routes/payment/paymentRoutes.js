@@ -3,6 +3,6 @@ const { fetchAllPayments } = require('../../controller/payments/getAllPayments.j
 
 const router = express.Router();
 
-app.use('/payments', fetchAllPayments);
+router.use('/payments', fetchAllPayments);
 
 module.exports = router;
