@@ -22,14 +22,18 @@ const getReceipts = async (req, res) => {
             return res.status(404).json({ message: 'No receipts found.' });
         }
 
-        res.status(200).json(receipts);
+        // Format the receipts to include createdAt timestamp
+        const formattedReceipts = receipts.map(receipt => ({
+            ...receipt,
+            createdAt: receipt.createdAt.toISOString(), // Format createdAt for better readability
+        }));
+
+        res.status(200).json(formattedReceipts);
     } catch (error) {
         console.error('Error fetching receipts:', error);
         res.status(500).json({ error: 'Failed to fetch receipts.' });
     }
 };
-
-
 
 // Controller function to fetch a receipt by its ID
 const getReceiptById = async (req, res) => {
@@ -57,16 +61,20 @@ const getReceiptById = async (req, res) => {
             return res.status(404).json({ message: `Receipt with ID ${id} not found.` });
         }
 
-        res.status(200).json(receipt);
+        // Format the receipt to include createdAt timestamp
+        const formattedReceipt = {
+            ...receipt,
+            createdAt: receipt.createdAt.toISOString(), // Format createdAt for better readability
+        };
+
+        res.status(200).json(formattedReceipt);
     } catch (error) {
         console.error('Error fetching receipt:', error);
         res.status(500).json({ error: 'Failed to fetch the receipt.' });
     }
 };
 
-
-
-
 module.exports = {
-    getReceipts,getReceiptById
+    getReceipts,
+    getReceiptById,
 };

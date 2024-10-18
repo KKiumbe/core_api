@@ -183,6 +183,8 @@ async function createReceipt(amount, MpesaCode, FirstName, phone, customerId, in
                 create: { invoiceId: invoiceId },
             },
             receiptNumber: receiptNumber,
+            createdAt: new Date() 
+
         },
     });
 }

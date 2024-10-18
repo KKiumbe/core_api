@@ -123,6 +123,7 @@ model Receipt {
 
   customer       Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
   customerId     String      @db.ObjectId
+  createdAt DateTime @default(now())
 }
 
 // Payment model

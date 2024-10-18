@@ -7,11 +7,10 @@ function generateReceiptNumber() {
     return `RCPT${randomDigits}`; // Prefix with "RCPT"
 }
 
-
-
 const manualReceipt = async (req, res) => {
     const { customerId, totalAmount, modeOfPayment, paidBy } = req.body;
 
+    // Validate required fields
     if (!customerId || !totalAmount || !modeOfPayment || !paidBy) {
         return res.status(400).json({ message: 'Missing required fields.' });
     }
@@ -31,7 +30,7 @@ const manualReceipt = async (req, res) => {
             where: { customerId: customerId, status: 'UNPAID' },
         });
 
-        // Initialize remaining amount and closing balance
+        // Initialize variables for processing
         let remainingAmount = totalAmount;
         const receipts = []; // To store created receipts
         const updatedInvoices = []; // To track updated invoices
@@ -47,6 +46,7 @@ const manualReceipt = async (req, res) => {
                     amount: totalAmount,
                     modeOfPayment: modeOfPayment,
                     receipted: true, // Mark payment as receipted
+                    createdAt: new Date() // Set createdAt timestamp
                 },
             });
 
@@ -64,6 +64,7 @@ const manualReceipt = async (req, res) => {
                     receiptNumber: receiptNumber,  // Add receipt number here
                     paymentId: payment.id,  // Link the created payment
                     paidBy: paidBy,  // Include the paidBy field
+                    createdAt: new Date() // Set createdAt timestamp
                 },
             });
 
@@ -115,6 +116,7 @@ const manualReceipt = async (req, res) => {
                     amount: paymentForInvoice,
                     modeOfPayment: modeOfPayment,
                     receipted: true, // Mark payment as receipted
+                    createdAt: new Date() // Set createdAt timestamp
                 },
             });
 
@@ -129,6 +131,7 @@ const manualReceipt = async (req, res) => {
                     receiptNumber: receiptNumber,
                     paymentId: payment.id,
                     paidBy: paidBy,
+                    createdAt: new Date() // Set createdAt timestamp
                 },
             });
 
@@ -174,10 +177,6 @@ const manualReceipt = async (req, res) => {
         console.error('Error creating manual receipts:', error);
         res.status(500).json({ error: 'Failed to create manual receipts.' });
     }
-};
-
-module.exports = {
-    manualReceipt,
 };
 
 module.exports = {
