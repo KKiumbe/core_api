@@ -4,15 +4,16 @@ const prisma = new PrismaClient();
 // Controller function to fetch all receipts
 const getReceipts = async (req, res) => {
     try {
-        // Fetch all receipts with their associated payment, customer, and closing balance
+        // Fetch all receipts with their associated payment, customer (with closing balance), and invoice details
         const receipts = await prisma.receipt.findMany({
             include: {
                 payment: true, // Include payment details
-                customer: {    // Include customer details
+                customer: {    // Include customer details, including closingBalance
                     select: {
-                        name: true,
+                        firstName: true,    // Replace 'name' with valid fields like 'firstName' and 'lastName'
+                        lastName: true,
                         phoneNumber: true,
-                        closingBalance: true, // Include the closing balance from the customer
+                        closingBalance: true, // Fetch the closing balance from the customer collection
                     },
                 },
                 receiptInvoices: {
@@ -31,13 +32,13 @@ const getReceipts = async (req, res) => {
             return res.status(404).json({ message: 'No receipts found.' });
         }
 
-        // Format the receipts to include createdAt timestamp
+        // Format the receipts to include createdAt timestamp and customer closingBalance
         const formattedReceipts = receipts.map((receipt) => ({
             ...receipt,
             createdAt: receipt.createdAt.toISOString(), // Format createdAt for better readability
             customer: {
                 ...receipt.customer,
-                closingBalance: receipt.customer?.closingBalance || 0, // Ensure closingBalance is present
+                closingBalance: receipt.customer?.closingBalance || 0, // Include customer closingBalance (default to 0 if not found)
             },
         }));
 
@@ -53,18 +54,19 @@ const getReceiptById = async (req, res) => {
     const { id } = req.params; // Extract receipt ID from the route parameters
 
     try {
-        // Fetch the receipt with the specified ID, including related payment, customer, and closing balance
+        // Fetch the receipt with the specified ID, including related payment, customer (with closing balance), and invoice details
         const receipt = await prisma.receipt.findUnique({
             where: {
-                id: parseInt(id), // Match the receipt by ID (ensure ID is an integer)
+                id: id, // Match the receipt by ID
             },
             include: {
                 payment: true, // Include payment details
-                customer: {    // Include customer details
+                customer: {    // Include customer details, including closingBalance
                     select: {
-                        name: true,
+                        firstName: true,    // Replace 'name' with valid fields like 'firstName' and 'lastName'
+                        lastName: true,
                         phoneNumber: true,
-                        closingBalance: true, // Include the closing balance from the customer
+                        closingBalance: true, // Fetch the closing balance from the customer collection
                     },
                 },
                 receiptInvoices: {
@@ -80,13 +82,13 @@ const getReceiptById = async (req, res) => {
             return res.status(404).json({ message: `Receipt with ID ${id} not found.` });
         }
 
-        // Format the receipt to include createdAt timestamp
+        // Format the receipt to include createdAt timestamp and customer closingBalance
         const formattedReceipt = {
             ...receipt,
             createdAt: receipt.createdAt.toISOString(), // Format createdAt for better readability
             customer: {
                 ...receipt.customer,
-                closingBalance: receipt.customer?.closingBalance || 0, // Ensure closingBalance is present
+                closingBalance: receipt.customer?.closingBalance || 0, // Include customer closingBalance (default to 0 if not found)
             },
         };
 
