@@ -7,6 +7,8 @@ function generateReceiptNumber() {
     return `RCPT${randomDigits}`; // Prefix with "RCPT"
 }
 
+
+
 const manualReceipt = async (req, res) => {
     const { customerId, totalAmount, modeOfPayment, paidBy } = req.body;
 
@@ -44,6 +46,7 @@ const manualReceipt = async (req, res) => {
                 data: {
                     amount: totalAmount,
                     modeOfPayment: modeOfPayment,
+                    receipted: true, // Mark payment as receipted
                 },
             });
 
@@ -111,6 +114,7 @@ const manualReceipt = async (req, res) => {
                 data: {
                     amount: paymentForInvoice,
                     modeOfPayment: modeOfPayment,
+                    receipted: true, // Mark payment as receipted
                 },
             });
 
@@ -170,6 +174,10 @@ const manualReceipt = async (req, res) => {
         console.error('Error creating manual receipts:', error);
         res.status(500).json({ error: 'Failed to create manual receipts.' });
     }
+};
+
+module.exports = {
+    manualReceipt,
 };
 
 module.exports = {
