@@ -7,7 +7,6 @@ function generateReceiptNumber() {
     return `RCPT${randomDigits}`; // Prefix with "RCPT"
 }
 
-// Controller function to manually create receipts for all unpaid invoices of a customer
 const manualReceipt = async (req, res) => {
     const { customerId, totalAmount, modeOfPayment, paidBy } = req.body;
 
@@ -39,14 +38,47 @@ const manualReceipt = async (req, res) => {
         if (invoices.length === 0) {
             // No unpaid invoices; treat as overpayment and update closing balance
             const newClosingBalance = customer.closingBalance - totalAmount; // Closing balance will be negative
+            
+            // Create a payment record
+            const payment = await prisma.payment.create({
+                data: {
+                    amount: totalAmount,
+                    modeOfPayment: modeOfPayment,
+                },
+            });
+
+            payments.push(payment);
+
+            // Generate a unique receipt number
+            const receiptNumber = generateReceiptNumber();
+
+            // Create a receipt for the overpayment
+            const receipt = await prisma.receipt.create({
+                data: {
+                    customerId: customerId,
+                    amount: totalAmount,
+                    modeOfPayment: modeOfPayment, // Use the provided payment method
+                    receiptNumber: receiptNumber,  // Add receipt number here
+                    paymentId: payment.id,  // Link the created payment
+                    paidBy: paidBy,  // Include the paidBy field
+                },
+            });
+
+            receipts.push(receipt);
+
+            // Update the customer's closing balance
             await prisma.customer.update({
                 where: { id: customerId },
                 data: {
                     closingBalance: newClosingBalance,
                 },
             });
+
             return res.status(200).json({
                 message: 'No unpaid invoices found. Payment processed as overpayment.',
+                receipts,
+                updatedInvoices,
+                payments,
                 newClosingBalance,
             });
         }
@@ -74,7 +106,7 @@ const manualReceipt = async (req, res) => {
             // Generate a unique receipt number
             const receiptNumber = generateReceiptNumber();
 
-            // Create a payment record first
+            // Create a payment record for the invoice payment
             const payment = await prisma.payment.create({
                 data: {
                     amount: paymentForInvoice,
@@ -89,10 +121,10 @@ const manualReceipt = async (req, res) => {
                 data: {
                     customerId: customerId,
                     amount: paymentForInvoice,
-                    modeOfPayment: modeOfPayment, // Use the provided payment method
-                    receiptNumber: receiptNumber,  // Add receipt number here
-                    paymentId: payment.id,  // Link the created payment
-                    paidBy: paidBy,  // Include the paidBy field (from request body or other source)
+                    modeOfPayment: modeOfPayment,
+                    receiptNumber: receiptNumber,
+                    paymentId: payment.id,
+                    paidBy: paidBy,
                 },
             });
 
@@ -113,7 +145,7 @@ const manualReceipt = async (req, res) => {
             });
             return res.status(200).json({
                 message: 'Payment processed successfully, but closing balance is negative due to overpayment.',
-                receipts: receipts.map(r => r.id), // Return only receipt IDs
+                receipts,
                 updatedInvoices,
                 payments,
                 newClosingBalance,
@@ -129,7 +161,7 @@ const manualReceipt = async (req, res) => {
 
         res.status(201).json({
             message: 'Receipts created successfully.',
-            receipts: receipts.map(r => r.id), // Return only receipt IDs
+            receipts,
             updatedInvoices,
             payments,
             newClosingBalance,
