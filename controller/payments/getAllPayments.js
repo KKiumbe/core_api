@@ -15,6 +15,7 @@ const fetchAllPayments = async (req, res) => {
                         },
                     },
                 },
+                customer: true, // Include customer details
             },
             orderBy: {
                 id: 'desc' // Order payments by id in descending order
@@ -28,14 +29,13 @@ const fetchAllPayments = async (req, res) => {
     }
 };
 
-
-// Controller to fetch a payment by ID with associated invoices
+// Controller to fetch a payment by ID with associated invoices and customer details
 const fetchPaymentById = async (req, res) => {
     const { paymentId } = req.params; // Get the payment ID from request parameters
 
     try {
         const payment = await prisma.payment.findUnique({
-            where: { id: paymentId }, // Find the payment by ID
+            where: { id: Number(paymentId) }, // Ensure paymentId is a number
             include: {
                 receipt: {
                     include: {
@@ -46,6 +46,7 @@ const fetchPaymentById = async (req, res) => {
                         },
                     },
                 },
+                customer: true, // Include customer details
             },
         });
 
