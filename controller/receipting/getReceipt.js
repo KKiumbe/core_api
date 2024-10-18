@@ -4,19 +4,25 @@ const prisma = new PrismaClient();
 // Controller function to fetch all receipts
 const getReceipts = async (req, res) => {
     try {
-        // Fetch all receipts with their associated payment and customer details
+        // Fetch all receipts with their associated payment, customer, and closing balance
         const receipts = await prisma.receipt.findMany({
             include: {
                 payment: true, // Include payment details
-                customer: true, // Include customer details
+                customer: {    // Include customer details
+                    select: {
+                        name: true,
+                        phoneNumber: true,
+                        closingBalance: true, // Include the closing balance from the customer
+                    },
+                },
                 receiptInvoices: {
                     include: {
-                        invoice: true // Include invoice details for each receipt
-                    }
-                }
+                        invoice: true, // Include invoice details for each receipt
+                    },
+                },
             },
             orderBy: {
-                id: 'desc', // Order receipts by createdAt in descending order
+                id: 'desc', // Order receipts by ID in descending order
             },
         });
 
@@ -26,9 +32,13 @@ const getReceipts = async (req, res) => {
         }
 
         // Format the receipts to include createdAt timestamp
-        const formattedReceipts = receipts.map(receipt => ({
+        const formattedReceipts = receipts.map((receipt) => ({
             ...receipt,
             createdAt: receipt.createdAt.toISOString(), // Format createdAt for better readability
+            customer: {
+                ...receipt.customer,
+                closingBalance: receipt.customer?.closingBalance || 0, // Ensure closingBalance is present
+            },
         }));
 
         res.status(200).json(formattedReceipts);
@@ -43,20 +53,26 @@ const getReceiptById = async (req, res) => {
     const { id } = req.params; // Extract receipt ID from the route parameters
 
     try {
-        // Fetch the receipt with the specified ID, including related payment, customer, and invoice details
+        // Fetch the receipt with the specified ID, including related payment, customer, and closing balance
         const receipt = await prisma.receipt.findUnique({
             where: {
-                id: id, // Match the receipt by ID
+                id: parseInt(id), // Match the receipt by ID (ensure ID is an integer)
             },
             include: {
                 payment: true, // Include payment details
-                customer: true, // Include customer details
+                customer: {    // Include customer details
+                    select: {
+                        name: true,
+                        phoneNumber: true,
+                        closingBalance: true, // Include the closing balance from the customer
+                    },
+                },
                 receiptInvoices: {
                     include: {
-                        invoice: true // Include invoice details for each receipt
-                    }
-                }
-            }
+                        invoice: true, // Include invoice details for each receipt
+                    },
+                },
+            },
         });
 
         // Check if the receipt was found
@@ -68,6 +84,10 @@ const getReceiptById = async (req, res) => {
         const formattedReceipt = {
             ...receipt,
             createdAt: receipt.createdAt.toISOString(), // Format createdAt for better readability
+            customer: {
+                ...receipt.customer,
+                closingBalance: receipt.customer?.closingBalance || 0, // Ensure closingBalance is present
+            },
         };
 
         res.status(200).json(formattedReceipt);
