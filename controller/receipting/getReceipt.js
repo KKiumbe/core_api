@@ -16,7 +16,7 @@ const getReceipts = async (req, res) => {
                 }
             },
             orderBy: {
-                createdAt: 'desc', // Order receipts by createdAt in descending order
+                id: 'desc', // Order receipts by createdAt in descending order
             },
         });
 
