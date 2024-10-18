@@ -14,7 +14,10 @@ const getReceipts = async (req, res) => {
                         invoice: true // Include invoice details for each receipt
                     }
                 }
-            }
+            },
+            orderBy: {
+                createdAt: 'desc', // Order receipts by createdAt in descending order
+            },
         });
 
         // Check if receipts were found

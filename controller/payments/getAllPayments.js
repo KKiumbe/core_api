@@ -16,6 +16,9 @@ const fetchAllPayments = async (req, res) => {
                     },
                 },
             },
+            orderBy: {
+                createdAt: 'desc', // Order by the createdAt field in descending order
+            },
         });
 
         res.status(200).json(payments); // Respond with the payments data
@@ -24,7 +27,6 @@ const fetchAllPayments = async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 };
-
 
 // Controller to fetch a payment by ID with associated invoices
 const fetchPaymentById = async (req, res) => {
