@@ -136,7 +136,11 @@ model Payment {
   // One-to-one relationship with Receipt
   receipt                 Receipt?    
   receiptId               String?     @db.ObjectId @unique
+
+  // Capture when the payment was created
+  createdAt               DateTime    @default(now()) // Automatically set when created
 }
+
 
 // MpesaTransaction model for tracking MPESA transactions separately
 model MpesaTransaction {

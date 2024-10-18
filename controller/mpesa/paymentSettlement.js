@@ -7,6 +7,8 @@ function generateReceiptNumber() {
     return `RCPT${randomDigits}`; // Prefix with "RCPT"
 }
 
+
+
 async function settleInvoice() {
     try {
         // Step 1: Retrieve all unprocessed Mpesa transactions
@@ -21,7 +23,7 @@ async function settleInvoice() {
 
         // Step 2: Loop through each unprocessed Mpesa transaction
         for (const transaction of mpesaTransactions) {
-            const { BillRefNumber, TransAmount, id, FirstName, MSISDN: phone, TransID: MpesaCode } = transaction;
+            const { BillRefNumber, TransAmount, id, FirstName, MSISDN: phone, TransID: MpesaCode, TransTime } = transaction;
 
             console.log(`Processing transaction: ${id} for amount: ${TransAmount}`);
 
@@ -45,6 +47,7 @@ async function settleInvoice() {
                         modeOfPayment: 'MPESA',
                         mpesaTransactionId: MpesaCode,
                         receipted: false,
+                        createdAt: TransTime
                     },
                 });
                 console.log(`No customer found with BillRefNumber ${BillRefNumber}. Transaction saved with receipted: false.`);
@@ -85,6 +88,7 @@ async function settleInvoice() {
                             modeOfPayment: 'MPESA',
                             mpesaTransactionId: MpesaCode,
                             receipted: true,
+                            createdAt: TransTime
                         },
                     });
 
@@ -108,6 +112,7 @@ async function settleInvoice() {
                             modeOfPayment: 'MPESA',
                             mpesaTransactionId: MpesaCode,
                             receipted: true,
+                            createdAt: TransTime
                         },
                     });
 
@@ -121,7 +126,22 @@ async function settleInvoice() {
             // Step 5: Handle overpayment scenario
             if (remainingAmount > 0) {
                 totalAmountAppliedToInvoices += remainingAmount;
+
+                // Create a new payment for the overpayment amount
+                const overpayment = await prisma.payment.create({
+                    data: {
+                        amount: remainingAmount,
+                        modeOfPayment: 'MPESA',
+                        mpesaTransactionId: MpesaCode,
+                        receipted: true,
+                        createdAt: TransTime
+                    },
+                });
+
                 console.log(`Customer ${customer.id} overpaid. Closing balance adjusted by ${remainingAmount}.`);
+
+                // Generate a receipt for the overpayment
+                await createReceipt(remainingAmount, MpesaCode, FirstName, phone, customer.id, null, overpayment.id);
             }
 
             // Step 6: Update the customer's closing balance with total amount applied to invoices or overpayment
@@ -144,6 +164,8 @@ async function settleInvoice() {
         console.error('Error processing Mpesa transactions in settleInvoice:', error);
     }
 }
+
+
 
 // Helper function to create receipt
 async function createReceipt(amount, MpesaCode, FirstName, phone, customerId, invoiceId, paymentId) {
