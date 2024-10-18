@@ -5,6 +5,11 @@ const prisma = new PrismaClient();
 const fetchAllPayments = async (req, res) => {
     try {
         const payments = await prisma.payment.findMany({
+            where: {
+                createdAt: {
+                    not: null, // Only fetch payments where createdAt is not null
+                },
+            },
             include: {
                 receipt: {
                     include: {
@@ -17,7 +22,7 @@ const fetchAllPayments = async (req, res) => {
                 },
             },
             orderBy: {
-                createdAt: 'desc', // Order by the createdAt field in descending order
+                createdAt: 'desc', // Order payments from newest to oldest
             },
         });
 
@@ -27,6 +32,7 @@ const fetchAllPayments = async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 };
+
 
 // Controller to fetch a payment by ID with associated invoices
 const fetchPaymentById = async (req, res) => {
