@@ -5,11 +5,6 @@ const prisma = new PrismaClient();
 const fetchAllPayments = async (req, res) => {
     try {
         const payments = await prisma.payment.findMany({
-            where: {
-                createdAt: {
-                    not: null, // Only fetch payments where createdAt is not null
-                },
-            },
             include: {
                 receipt: {
                     include: {
@@ -22,7 +17,7 @@ const fetchAllPayments = async (req, res) => {
                 },
             },
             orderBy: {
-                createdAt: 'desc', // Order payments from newest to oldest
+                id: 'desc' // Order payments by id in descending order
             },
         });
 
