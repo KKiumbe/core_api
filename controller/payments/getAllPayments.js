@@ -72,7 +72,7 @@ const fetchPaymentById = async (req, res) => {
 
     try {
         const payment = await prisma.payment.findUnique({
-            where: { id: Number(paymentId) }, // Ensure paymentId is a number
+            where: { id: paymentId }, // Treat paymentId as a string
             include: {
                 receipt: {
                     include: {
