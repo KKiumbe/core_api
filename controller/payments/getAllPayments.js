@@ -83,7 +83,7 @@ const fetchPaymentById = async (req, res) => {
                         },
                     },
                 },
-                customer: true, // Include customer details
+               
             },
         });
 
