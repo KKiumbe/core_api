@@ -83,7 +83,6 @@ const fetchPaymentById = async (req, res) => {
                         },
                     },
                 },
-               
             },
         });
 
@@ -99,4 +98,8 @@ const fetchPaymentById = async (req, res) => {
 };
 
 // Export the controller functions
-module.exports = { fetchAllPayments, fetchPaymentById, fetchPaymentsByTransactionId };
+module.exports = { 
+    fetchAllPayments, 
+    fetchPaymentById, 
+    fetchPaymentsByTransactionId 
+};
