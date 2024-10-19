@@ -1,7 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Controller to fetch all payments with associated invoices
+// Controller to fetch all payments with associated invoices and customer details
 const fetchAllPayments = async (req, res) => {
     try {
         const payments = await prisma.payment.findMany({
@@ -15,10 +15,10 @@ const fetchAllPayments = async (req, res) => {
                         },
                     },
                 },
-             
+                customer: true, // Include customer details
             },
             orderBy: {
-                id: 'desc' // Order payments by id in descending order
+                id: 'desc' // Order payments by ID in descending order
             },
         });
 
@@ -29,7 +29,7 @@ const fetchAllPayments = async (req, res) => {
     }
 };
 
-
+// Controller to fetch payments by Mpesa transaction ID
 const fetchPaymentsByTransactionId = async (req, res) => {
     const { transactionId } = req.query; // Get the transaction ID from query parameters
 
@@ -67,9 +67,6 @@ const fetchPaymentsByTransactionId = async (req, res) => {
     }
 };
 
-
-
-
 // Controller to fetch a payment by ID with associated invoices and customer details
 const fetchPaymentById = async (req, res) => {
     const { paymentId } = req.params; // Get the payment ID from request parameters
@@ -87,7 +84,7 @@ const fetchPaymentById = async (req, res) => {
                         },
                     },
                 },
-               
+                customer: true, // Include customer details
             },
         });
 
@@ -103,4 +100,4 @@ const fetchPaymentById = async (req, res) => {
 };
 
 // Export the controller functions
-module.exports = { fetchAllPayments, fetchPaymentById ,fetchPaymentsByTransactionId};
+module.exports = { fetchAllPayments, fetchPaymentById, fetchPaymentsByTransactionId };
