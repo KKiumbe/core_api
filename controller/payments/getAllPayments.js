@@ -51,7 +51,7 @@ const fetchPaymentsByTransactionId = async (req, res) => {
                         },
                     },
                 },
-                customer: true, // Include customer details
+               
             },
         });
 
