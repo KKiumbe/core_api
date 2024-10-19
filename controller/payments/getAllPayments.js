@@ -14,8 +14,7 @@ const fetchAllPayments = async (req, res) => {
                             },
                         },
                     },
-                },
-                customer: true, // Include customer details
+                }
             },
             orderBy: {
                 id: 'desc' // Order payments by ID in descending order
