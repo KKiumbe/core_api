@@ -176,6 +176,8 @@ router.post('/send-bills', async (req, res) => {
 router.post('/send-bill', async (req, res) => {
     const { customerId } = req.body; // Extract customer ID from request body
 
+    console.log(`this is the customer id ${customerId}`);
+
     // Validate input
     if (!customerId) {
         return res.status(400).json({ error: 'Customer ID is required.' });
