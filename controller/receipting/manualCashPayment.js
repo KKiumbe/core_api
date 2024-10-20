@@ -2,6 +2,13 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+
+
+function generateReceiptNumber() {
+    const randomDigits = Math.floor(10000 + Math.random() * 90000); // Generates a number between 10000 and 99999
+    return `RCPT${randomDigits}`; // Prefix with "RCPT"
+}
+
 const manualCashPayment = async (req, res) => {
     const { customerId, totalAmount, modeOfPayment, paidBy, paymentId } = req.body;
 
