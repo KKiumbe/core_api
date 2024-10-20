@@ -23,6 +23,13 @@ const sanitizePhoneNumber = (phone) => {
   }
 };
 
+// Function to get the current month name
+const getCurrentMonthName = () => {
+  const options = { month: 'long' }; // Long format for the full month name
+  const monthName = new Intl.DateTimeFormat('en-US', options).format(new Date());
+  return monthName.charAt(0).toUpperCase() + monthName.slice(1); // Capitalize the first letter
+};
+
 // Send SMS to a group of customers
 router.post('/send-to-group', async (req, res) => {
   const { day, message } = req.body; // Get the day and message from the request body
@@ -123,6 +130,9 @@ router.post('/send-bills', async (req, res) => {
             },
         });
 
+        // Get the current month name
+        const currentMonth = getCurrentMonthName();
+
         // Prepare messages for each customer
         const messages = activeCustomers.map(customer => {
             const invoices = customer.invoices;
@@ -132,18 +142,15 @@ router.post('/send-bills', async (req, res) => {
             }
 
             // Current balance is the amount of the latest unpaid invoice
-            const currentInvoice = invoices[0];
-            const currentBalance = currentInvoice.invoiceAmount;
+            const currentInvoice = customer.monthlyCharge;
+            const currentBalance = customer.closingBalance;
 
             // Previous balance is the sum of all previous unpaid invoices (excluding the latest one)
-            const previousBalance = invoices.slice(1).reduce((sum, invoice) => sum + invoice.invoiceAmount, 0);
-
-            // Total balance is the current invoice amount plus previous balances
-            const totalBalance = currentBalance + previousBalance;
+            const previousBalance = currentBalance - currentInvoice;
 
             return {
                 phoneNumber: customer.phoneNumber,
-                message: `Hello ${customer.firstName}, your previous balance was KES ${previousBalance}. Your current bill is KES ${currentBalance}. Total balance is KES ${totalBalance}. Please pay your bills.`,
+                message: `Hello ${customer.firstName}, your previous balance for ${currentMonth} is KES ${previousBalance}. Your ${currentMonth} bill is KES ${currentInvoice}. Total balance is KES ${currentBalance}. Please pay your bills.`,
             };
         }).filter(message => message !== null); // Filter out null messages
 
@@ -165,6 +172,65 @@ router.post('/send-bills', async (req, res) => {
     }
 });
 
+// Send bill to a single customer
+router.post('/send-bill', async (req, res) => {
+    const { customerId } = req.body; // Extract customer ID from request body
+
+    // Validate input
+    if (!customerId) {
+        return res.status(400).json({ error: 'Customer ID is required.' });
+    }
+
+    try {
+        // Fetch the customer and their unpaid invoices
+        const customer = await prisma.customer.findUnique({
+            where: { id: customerId },
+            include: {
+                invoices: {
+                    where: { status: 'UNPAID' },
+                },
+            },
+        });
+
+        if (!customer || customer.invoices.length === 0) {
+            return res.status(404).json({ error: 'Customer not found or has no unpaid invoices.' });
+        }
+
+        // Get the current month name
+        const currentMonth = getCurrentMonthName();
+
+        // Current balance is the amount of the latest unpaid invoice
+        const currentInvoice = customer.monthlyCharge;
+        const currentBalance = customer.closingBalance;
+
+        // Previous balance is the sum of all previous unpaid invoices (excluding the latest one)
+        const previousBalance = currentBalance - currentInvoice;
+
+        // Prepare the message
+        const message = `Hello ${customer.firstName}, your previous balance for ${currentMonth} is KES ${previousBalance}. Your ${currentMonth} bill is KES ${currentInvoice}. Total balance is KES ${currentBalance}. Please pay your bills.`;
+
+        // Sanitize the phone number
+        const sanitizedMobile = sanitizePhoneNumber(customer.phoneNumber);
+
+        // Send the SMS
+        const payload = {
+            apikey: SMS_API_KEY,
+            partnerID: PARTNER_ID,
+            shortcode: SHORTCODE,
+            message: message,
+            mobile: sanitizedMobile,
+        };
+
+        const response = await axios.post(SMS_ENDPOINT, payload);
+
+        return res.status(response.status).json({ message: 'Bill sent successfully!', data: response.data });
+    } catch (error) {
+        console.error('Error sending bill:', error);
+        const errorMessage = error.response ? error.response.data : 'Failed to send bill.';
+        return res.status(500).json({ error: errorMessage });
+    }
+});
+
 // Function to send SMS to a list of recipients
 const sendSms = async (messages) => {
     // Prepare the SMS list payload for the bulk SMS API
@@ -176,7 +242,6 @@ const sendSms = async (messages) => {
       message: message,
       shortcode: SHORTCODE,
       mobile: sanitizePhoneNumber(phoneNumber),
-       
     }));
 
     try {
