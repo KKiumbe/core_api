@@ -16,17 +16,13 @@ const manualReceipt = async (req, res) => {
     }
 
     try {
-        // Step 1: Check if the payment is already receipted
+        // Step 1: Check if the payment exists
         const existingPayment = await prisma.payment.findUnique({
             where: { id: paymentId },
         });
 
         if (!existingPayment) {
             return res.status(404).json({ message: 'Payment not found.' });
-        }
-
-        if (existingPayment.receipted) {
-            return res.status(400).json({ message: 'This payment has already been receipted.' });
         }
 
         // Step 2: Retrieve the customer
@@ -47,24 +43,17 @@ const manualReceipt = async (req, res) => {
         let remainingAmount = totalAmount;
         const receipts = []; // To store created receipts
         const updatedInvoices = []; // To track updated invoices
-        const payments = []; // To track created payments
+
+        // Update existing payment to mark as receipted
+        await prisma.payment.update({
+            where: { id: paymentId },
+            data: { receipted: true }, // Mark payment as receipted
+        });
 
         if (invoices.length === 0) {
             // No unpaid invoices; treat as overpayment and update closing balance
             const newClosingBalance = customer.closingBalance - totalAmount; // Closing balance will be negative
             
-            // Create a payment record and mark as receipted
-            const payment = await prisma.payment.create({
-                data: {
-                    amount: totalAmount,
-                    modeOfPayment: modeOfPayment,
-                    receipted: true, // Mark payment as receipted
-                    createdAt: new Date() // Set createdAt timestamp
-                },
-            });
-
-            payments.push(payment);
-
             // Generate a unique receipt number
             const receiptNumber = generateReceiptNumber();
 
@@ -75,7 +64,7 @@ const manualReceipt = async (req, res) => {
                     amount: totalAmount,
                     modeOfPayment: modeOfPayment,
                     receiptNumber: receiptNumber, // Add receipt number here
-                    paymentId: payment.id, // Link the created payment
+                    paymentId: paymentId, // Link the existing payment
                     paidBy: paidBy, // Include the paidBy field
                     createdAt: new Date() // Set createdAt timestamp
                 },
@@ -95,7 +84,6 @@ const manualReceipt = async (req, res) => {
                 message: 'No unpaid invoices found. Payment processed as overpayment.',
                 receipts,
                 updatedInvoices,
-                payments,
                 newClosingBalance,
             });
         }
@@ -123,18 +111,6 @@ const manualReceipt = async (req, res) => {
             // Generate a unique receipt number
             const receiptNumber = generateReceiptNumber();
 
-            // Create a payment record for the invoice payment
-            const payment = await prisma.payment.create({
-                data: {
-                    amount: paymentForInvoice,
-                    modeOfPayment: modeOfPayment,
-                    receipted: true, // Mark payment as receipted
-                    createdAt: new Date() // Set createdAt timestamp
-                },
-            });
-
-            payments.push(payment);
-
             // Create a receipt for the payment
             const receipt = await prisma.receipt.create({
                 data: {
@@ -142,7 +118,7 @@ const manualReceipt = async (req, res) => {
                     amount: paymentForInvoice,
                     modeOfPayment: modeOfPayment,
                     receiptNumber: receiptNumber,
-                    paymentId: payment.id,
+                    paymentId: paymentId, // Link the existing payment
                     paidBy: paidBy,
                     createdAt: new Date() // Set createdAt timestamp
                 },
@@ -156,18 +132,6 @@ const manualReceipt = async (req, res) => {
 
         // Step 5: Handle remaining amount (possible overpayment)
         if (remainingAmount > 0) {
-            // Create a payment record for the remaining amount and mark as receipted
-            const payment = await prisma.payment.create({
-                data: {
-                    amount: remainingAmount,
-                    modeOfPayment: modeOfPayment,
-                    receipted: true, // Mark payment as receipted
-                    createdAt: new Date() // Set createdAt timestamp
-                },
-            });
-
-            payments.push(payment); // Store the created payment
-
             // Generate a receipt for the overpayment
             const receiptNumber = generateReceiptNumber();
             const overpaymentReceipt = await prisma.receipt.create({
@@ -176,7 +140,7 @@ const manualReceipt = async (req, res) => {
                     amount: remainingAmount,
                     modeOfPayment: modeOfPayment,
                     receiptNumber: receiptNumber,
-                    paymentId: payment.id, // Link the created payment
+                    paymentId: paymentId, // Link the existing payment
                     paidBy: paidBy,
                     createdAt: new Date()
                 },
@@ -196,7 +160,6 @@ const manualReceipt = async (req, res) => {
                 message: 'Payment processed successfully, but closing balance is negative due to overpayment.',
                 receipts,
                 updatedInvoices,
-                payments,
                 newClosingBalance,
             });
         }
@@ -212,7 +175,6 @@ const manualReceipt = async (req, res) => {
             message: 'Receipts created successfully.',
             receipts,
             updatedInvoices,
-            payments,
             newClosingBalance,
         });
     } catch (error) {
