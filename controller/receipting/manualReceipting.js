@@ -40,7 +40,7 @@ const manualReceipt = async (req, res) => {
             // No unpaid invoices; treat as overpayment and update closing balance
             const newClosingBalance = customer.closingBalance - totalAmount; // Closing balance will be negative
             
-            // Create a payment record
+            // Create a payment record and mark as receipted
             const payment = await prisma.payment.create({
                 data: {
                     amount: totalAmount,
@@ -60,10 +60,10 @@ const manualReceipt = async (req, res) => {
                 data: {
                     customerId: customerId,
                     amount: totalAmount,
-                    modeOfPayment: modeOfPayment, // Use the provided payment method
-                    receiptNumber: receiptNumber,  // Add receipt number here
-                    paymentId: payment.id,  // Link the created payment
-                    paidBy: paidBy,  // Include the paidBy field
+                    modeOfPayment: modeOfPayment,
+                    receiptNumber: receiptNumber, // Add receipt number here
+                    paymentId: payment.id, // Link the created payment
+                    paidBy: paidBy, // Include the paidBy field
                     createdAt: new Date() // Set createdAt timestamp
                 },
             });
@@ -143,6 +143,34 @@ const manualReceipt = async (req, res) => {
 
         // Step 4: Handle remaining amount (possible overpayment)
         if (remainingAmount > 0) {
+            // Create a payment record for the remaining amount and mark as receipted
+            const payment = await prisma.payment.create({
+                data: {
+                    amount: remainingAmount,
+                    modeOfPayment: modeOfPayment,
+                    receipted: true, // Mark payment as receipted
+                    createdAt: new Date() // Set createdAt timestamp
+                },
+            });
+
+            payments.push(payment);
+
+            // Generate a receipt for the overpayment
+            const receiptNumber = generateReceiptNumber();
+            const overpaymentReceipt = await prisma.receipt.create({
+                data: {
+                    customerId: customerId,
+                    amount: remainingAmount,
+                    modeOfPayment: modeOfPayment,
+                    receiptNumber: receiptNumber,
+                    paymentId: payment.id,
+                    paidBy: paidBy,
+                    createdAt: new Date()
+                },
+            });
+
+            receipts.push(overpaymentReceipt);
+
             const newClosingBalance = customer.closingBalance - totalAmount; // Closing balance will be negative
             await prisma.customer.update({
                 where: { id: customerId },
@@ -150,6 +178,7 @@ const manualReceipt = async (req, res) => {
                     closingBalance: newClosingBalance,
                 },
             });
+
             return res.status(200).json({
                 message: 'Payment processed successfully, but closing balance is negative due to overpayment.',
                 receipts,
