@@ -7,8 +7,6 @@ function generateReceiptNumber() {
     return `RCPT${randomDigits}`; // Prefix with "RCPT"
 }
 
-
-
 async function settleInvoice() {
     try {
         // Step 1: Retrieve all unprocessed Mpesa transactions
@@ -33,7 +31,17 @@ async function settleInvoice() {
                 continue;
             }
 
-            // Step 3: Find the customer by matching the BillRefNumber (phone number)
+            // Step 3: Check if the Mpesa transaction already exists in the Payment table
+            const existingPayment = await prisma.payment.findUnique({
+                where: { mpesaTransactionId: MpesaCode },
+            });
+
+            if (existingPayment) {
+                console.log(`Mpesa transaction ${MpesaCode} already exists in payment table. Skipping.`);
+                continue;
+            }
+
+            // Step 4: Find the customer by matching the BillRefNumber (phone number)
             const customer = await prisma.customer.findUnique({
                 where: { phoneNumber: BillRefNumber },
                 select: { id: true, closingBalance: true },
@@ -47,13 +55,11 @@ async function settleInvoice() {
                         modeOfPayment: 'MPESA',
                         mpesaTransactionId: MpesaCode,
                         receipted: false,
-                        createdAt: TransTime
+                        createdAt: TransTime,
                     },
                 });
 
-                //update the mpesa collection 
-
-
+                // Mark the Mpesa transaction as processed
                 await prisma.mpesaTransaction.update({
                     where: { id: id },
                     data: { processed: true },
@@ -61,15 +67,9 @@ async function settleInvoice() {
 
                 console.log(`No customer found with BillRefNumber ${BillRefNumber}. Transaction saved with receipted: false.`);
                 continue;
-
-
-
-             
-
-
             }
 
-            // Step 4: Find unpaid invoices for the customer
+            // Step 5: Find unpaid invoices for the customer
             const invoices = await prisma.invoice.findMany({
                 where: { customerId: customer.id, status: 'UNPAID' },
                 orderBy: { createdAt: 'asc' },
@@ -103,7 +103,7 @@ async function settleInvoice() {
                             modeOfPayment: 'MPESA',
                             mpesaTransactionId: MpesaCode,
                             receipted: true,
-                            createdAt: TransTime
+                            createdAt: TransTime,
                         },
                     });
 
@@ -127,7 +127,7 @@ async function settleInvoice() {
                             modeOfPayment: 'MPESA',
                             mpesaTransactionId: MpesaCode,
                             receipted: true,
-                            createdAt: TransTime
+                            createdAt: TransTime,
                         },
                     });
 
@@ -138,7 +138,7 @@ async function settleInvoice() {
                 }
             }
 
-            // Step 5: Handle overpayment scenario
+            // Step 6: Handle overpayment scenario
             if (remainingAmount > 0) {
                 totalAmountAppliedToInvoices += remainingAmount;
 
@@ -149,7 +149,7 @@ async function settleInvoice() {
                         modeOfPayment: 'MPESA',
                         mpesaTransactionId: MpesaCode,
                         receipted: true,
-                        createdAt: TransTime
+                        createdAt: TransTime,
                     },
                 });
 
@@ -159,7 +159,7 @@ async function settleInvoice() {
                 await createReceipt(remainingAmount, MpesaCode, FirstName, phone, customer.id, null, overpayment.id);
             }
 
-            // Step 6: Update the customer's closing balance with total amount applied to invoices or overpayment
+            // Step 7: Update the customer's closing balance with total amount applied to invoices or overpayment
             await prisma.customer.update({
                 where: { id: customer.id },
                 data: {
@@ -180,8 +180,6 @@ async function settleInvoice() {
     }
 }
 
-
-
 // Helper function to create receipt
 async function createReceipt(amount, MpesaCode, FirstName, phone, customerId, invoiceId, paymentId) {
     const receiptNumber = generateReceiptNumber();
@@ -192,17 +190,15 @@ async function createReceipt(amount, MpesaCode, FirstName, phone, customerId, in
             paidBy: FirstName,
             transactionCode: MpesaCode,
             phoneNumber: phone,
-            paymentId: paymentId, 
-            customerId: customerId, 
+            paymentId: paymentId,
+            customerId: customerId,
             receiptInvoices: {
                 create: { invoiceId: invoiceId },
             },
             receiptNumber: receiptNumber,
-            createdAt: new Date() 
-
+            createdAt: new Date(),
         },
     });
 }
-
 
 module.exports = { settleInvoice };
