@@ -8,15 +8,28 @@ function generateReceiptNumber() {
 }
 
 const manualReceipt = async (req, res) => {
-    const { customerId, totalAmount, modeOfPayment, paidBy } = req.body;
+    const { paymentId, customerId, totalAmount, modeOfPayment, paidBy } = req.body;
 
     // Validate required fields
-    if (!customerId || !totalAmount || !modeOfPayment || !paidBy) {
+    if (!paymentId || !customerId || !totalAmount || !modeOfPayment || !paidBy) {
         return res.status(400).json({ message: 'Missing required fields.' });
     }
 
     try {
-        // Step 1: Retrieve the customer
+        // Step 1: Check if the payment is already receipted
+        const existingPayment = await prisma.payment.findUnique({
+            where: { id: paymentId },
+        });
+
+        if (!existingPayment) {
+            return res.status(404).json({ message: 'Payment not found.' });
+        }
+
+        if (existingPayment.receipted) {
+            return res.status(400).json({ message: 'This payment has already been receipted.' });
+        }
+
+        // Step 2: Retrieve the customer
         const customer = await prisma.customer.findUnique({
             where: { id: customerId },
         });
@@ -25,7 +38,7 @@ const manualReceipt = async (req, res) => {
             return res.status(404).json({ message: 'Customer not found.' });
         }
 
-        // Step 2: Retrieve all unpaid invoices for the customer
+        // Step 3: Retrieve all unpaid invoices for the customer
         const invoices = await prisma.invoice.findMany({
             where: { customerId: customerId, status: 'UNPAID' },
         });
@@ -87,7 +100,7 @@ const manualReceipt = async (req, res) => {
             });
         }
 
-        // Step 3: Process payment against invoices
+        // Step 4: Process payment against invoices
         for (const invoice of invoices) {
             if (remainingAmount <= 0) break; // Stop if there's no remaining amount
 
@@ -141,7 +154,7 @@ const manualReceipt = async (req, res) => {
             remainingAmount -= paymentForInvoice;
         }
 
-        // Step 4: Handle remaining amount (possible overpayment)
+        // Step 5: Handle remaining amount (possible overpayment)
         if (remainingAmount > 0) {
             // Create a payment record for the remaining amount and mark as receipted
             const payment = await prisma.payment.create({
@@ -153,7 +166,7 @@ const manualReceipt = async (req, res) => {
                 },
             });
 
-            payments.push(payment);
+            payments.push(payment); // Store the created payment
 
             // Generate a receipt for the overpayment
             const receiptNumber = generateReceiptNumber();
@@ -163,13 +176,13 @@ const manualReceipt = async (req, res) => {
                     amount: remainingAmount,
                     modeOfPayment: modeOfPayment,
                     receiptNumber: receiptNumber,
-                    paymentId: payment.id,
+                    paymentId: payment.id, // Link the created payment
                     paidBy: paidBy,
                     createdAt: new Date()
                 },
             });
 
-            receipts.push(overpaymentReceipt);
+            receipts.push(overpaymentReceipt); // Store the created receipt
 
             const newClosingBalance = customer.closingBalance - totalAmount; // Closing balance will be negative
             await prisma.customer.update({
@@ -188,7 +201,7 @@ const manualReceipt = async (req, res) => {
             });
         }
 
-        // Step 5: Update the customer's closing balance if no overpayment
+        // Step 6: Update the customer's closing balance if no overpayment
         const newClosingBalance = customer.closingBalance - totalAmount;
         await prisma.customer.update({
             where: { id: customerId },
