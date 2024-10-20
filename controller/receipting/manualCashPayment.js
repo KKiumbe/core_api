@@ -75,3 +75,8 @@ const manualCashPayment = async (req, res) => {
         res.status(500).json({ error: 'Failed to create manual cash payment.', details: error.message });
     }
 };
+
+
+module.exports ={
+    manualCashPayment
+}
