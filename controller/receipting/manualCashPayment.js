@@ -8,7 +8,7 @@ function generateReceiptNumber() {
 }
 
 const manualCashPayment = async (req, res) => {
-    const { customerId, totalAmount, modeOfPayment, paidBy } = req.body;
+    const { customerId, totalAmount, modeOfPayment, paidBy, paymentId } = req.body;
 
     // Validate required fields
     if (!customerId || !totalAmount || !modeOfPayment || !paidBy) {
@@ -34,9 +34,10 @@ const manualCashPayment = async (req, res) => {
                 customerId: customerId,
                 amount: totalAmount,
                 modeOfPayment: modeOfPayment,
-                receiptNumber: receiptNumber, // Add receipt number here
-                paidBy: paidBy, // Include the paidBy field
-                createdAt: new Date() // Set createdAt timestamp
+                receiptNumber: receiptNumber,
+                paidBy: paidBy,
+                createdAt: new Date(), // Set createdAt timestamp
+                payment: paymentId ? { connect: { id: paymentId } } : undefined, // Connect to payment if provided
             },
         });
 
