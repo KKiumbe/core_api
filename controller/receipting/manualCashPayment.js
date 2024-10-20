@@ -25,10 +25,33 @@ const manualCashPayment = async (req, res) => {
             return res.status(404).json({ message: 'Customer not found.' });
         }
 
+        // Step 2: Retrieve the payment if paymentId is provided
+        let payment;
+        if (paymentId) {
+            payment = await prisma.payment.findUnique({
+                where: { id: paymentId },
+            });
+
+            if (!payment) {
+                return res.status(404).json({ message: 'Payment not found.' });
+            }
+        }
+
         // Generate a unique receipt number
         const receiptNumber = generateReceiptNumber();
 
-        // Create a receipt for the payment
+        // Step 3: Create or update the payment
+        const updatedPayment = await prisma.payment.update({
+            where: { id: paymentId },
+            data: {
+                amount: totalAmount,
+                modeOfPayment: modeOfPayment,
+                receipted: true, // Mark as receipted
+                createdAt: new Date(), // Set createdAt timestamp
+            },
+        });
+
+        // Step 4: Create a receipt for the payment
         const receipt = await prisma.receipt.create({
             data: {
                 customerId: customerId,
@@ -37,11 +60,11 @@ const manualCashPayment = async (req, res) => {
                 receiptNumber: receiptNumber,
                 paidBy: paidBy,
                 createdAt: new Date(), // Set createdAt timestamp
-                payment: paymentId ? { connect: { id: paymentId } } : undefined, // Connect to payment if provided
+                paymentId: updatedPayment.id, // Link to the updated payment
             },
         });
 
-        // Update the customer's closing balance
+        // Step 5: Update the customer's closing balance
         const newClosingBalance = customer.closingBalance - totalAmount;
         await prisma.customer.update({
             where: { id: customerId },
@@ -53,6 +76,7 @@ const manualCashPayment = async (req, res) => {
         return res.status(201).json({
             message: 'Manual cash payment processed successfully.',
             receipt,
+            updatedPayment,
             newClosingBalance,
         });
     } catch (error) {
