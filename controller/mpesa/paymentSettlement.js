@@ -50,8 +50,23 @@ async function settleInvoice() {
                         createdAt: TransTime
                     },
                 });
+
+                //update the mpesa collection 
+
+
+                await prisma.mpesaTransaction.update({
+                    where: { id: id },
+                    data: { processed: true },
+                });
+
                 console.log(`No customer found with BillRefNumber ${BillRefNumber}. Transaction saved with receipted: false.`);
                 continue;
+
+
+
+             
+
+
             }
 
             // Step 4: Find unpaid invoices for the customer
