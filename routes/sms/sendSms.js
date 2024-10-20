@@ -113,13 +113,14 @@ router.post('/send-sms', async (req, res) => {
 // Send bills to all active customers
 router.post('/send-bills', async (req, res) => {
     try {
-        // Fetch all active customers with unpaid invoices
+        // Fetch all active customers
         const activeCustomers = await prisma.customer.findMany({
             where: {
                 status: 'ACTIVE',
             },
             include: {
                 invoices: {
+                    // Include unpaid invoices for all customers
                     where: {
                         status: 'UNPAID',
                     },
@@ -137,29 +138,26 @@ router.post('/send-bills', async (req, res) => {
         const messages = activeCustomers.map(customer => {
             const invoices = customer.invoices;
 
-            if (invoices.length === 0) {
-                return null; // Skip customers with no unpaid invoices
-            }
-
-            const currentInvoice = customer.monthlyCharge;
+            // Use the latest unpaid invoice amount for the current invoice
+            const currentInvoice = invoices.length > 0 ? invoices[0].invoiceAmount : 0; // Assume `amount` is the field for the invoice amount
             const currentBalance = customer.closingBalance;
 
-            // Prepare message based on the closing balance
+            // Prepare the message based on the balance
+            let message;
             if (currentBalance < 0) {
-                // Overpayment case
+                // Handle overpayment
                 const overpaymentAmount = Math.abs(currentBalance);
-                return {
-                    phoneNumber: customer.phoneNumber,
-                    message: `Hello ${customer.firstName}, you have an overpayment of KES ${overpaymentAmount}. Please contact us for further assistance.`,
-                };
+                message = `Hello ${customer.firstName}, you have an overpayment of KES ${overpaymentAmount}. Thank you for being a royal customer!`;
             } else {
-                // Normal billing case
+                // Calculate previous balance if applicable
                 const previousBalance = currentBalance - currentInvoice;
-                return {
-                    phoneNumber: customer.phoneNumber,
-                    message: `Hello ${customer.firstName}, your previous balance for ${currentMonth} is KES ${previousBalance}. Your ${currentMonth} bill is KES ${currentInvoice}. Total balance is KES ${currentBalance}. Please pay your bills.`,
-                };
+                message = `Hello ${customer.firstName}, your previous balance for ${currentMonth} is KES ${previousBalance}. Your ${currentMonth} bill is KES ${currentInvoice}. Total balance is KES ${currentBalance}. Please pay your bills.`;
             }
+
+            return {
+                phoneNumber: customer.phoneNumber,
+                message: message,
+            };
         }).filter(message => message !== null); // Filter out null messages
 
         // Send SMS to each customer
@@ -184,8 +182,6 @@ router.post('/send-bills', async (req, res) => {
 router.post('/send-bill', async (req, res) => {
     const { customerId } = req.body; // Extract customer ID from request body
 
-    console.log(`this is the customer id ${customerId}`);
-
     // Validate input
     if (!customerId) {
         return res.status(400).json({ error: 'Customer ID is required.' });
@@ -198,30 +194,33 @@ router.post('/send-bill', async (req, res) => {
             include: {
                 invoices: {
                     where: { status: 'UNPAID' },
+                    orderBy: {
+                        createdAt: 'desc', // Ensure the latest invoice is first
+                    },
                 },
             },
         });
 
-        if (!customer || customer.invoices.length === 0) {
-            return res.status(404).json({ error: 'Customer not found or has no unpaid invoices.' });
+        if (!customer) {
+            return res.status(404).json({ error: 'Customer not found.' });
         }
 
         // Get the current month name
         const currentMonth = getCurrentMonthName();
 
-        const currentInvoice = customer.monthlyCharge;
+        // Use the latest unpaid invoice amount for the current invoice
+        const currentInvoice = customer.invoices.length > 0 ? customer.invoices[0].invoiceAmount : 0; // Assume `amount` is the field for the invoice amount
         const currentBalance = customer.closingBalance;
 
+        // Construct the message based on the closing balance
         let message;
 
-        // Prepare the message based on the closing balance
-        if (currentBalance < 0) {
-            // Overpayment case
-            const overpaymentAmount = Math.abs(currentBalance);
-            message = `Hello ${customer.firstName}, you have an overpayment of KES ${overpaymentAmount}. Please contact us for further assistance.`;
+        if (currentBalance < 0) { // Handle overpayment case
+            message = `Hello ${customer.firstName}, you have an overpayment of KES ${Math.abs(currentBalance)}. Thank you for being a royal customer.`;
         } else {
-            // Normal billing case
+            // Previous balance is the sum of all previous unpaid invoices (excluding the latest one)
             const previousBalance = currentBalance - currentInvoice;
+
             message = `Hello ${customer.firstName}, your previous balance for ${currentMonth} is KES ${previousBalance}. Your ${currentMonth} bill is KES ${currentInvoice}. Total balance is KES ${currentBalance}. Please pay your bills.`;
         }
 
@@ -251,13 +250,13 @@ router.post('/send-bill', async (req, res) => {
 const sendSms = async (messages) => {
     // Prepare the SMS list payload for the bulk SMS API
     const smsList = messages.map(({ phoneNumber, message }) => ({
-      partnerID: PARTNER_ID,
-      apikey: SMS_API_KEY,
-      pass_type: "plain",
-      clientsmsid: Math.floor(Math.random() * 10000), // Ensure this is unique if required
-      message: message,
-      shortcode: SHORTCODE,
-      mobile: sanitizePhoneNumber(phoneNumber),
+        partnerID: PARTNER_ID,
+        apikey: SMS_API_KEY,
+        pass_type: "plain",
+        clientsmsid: Math.floor(Math.random() * 10000), // Ensure this is unique if required
+        message: message,
+        shortcode: SHORTCODE,
+        mobile: sanitizePhoneNumber(phoneNumber),
     }));
 
     try {
