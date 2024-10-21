@@ -3,6 +3,7 @@ const https = require('https'); // Import https module
 const fs = require('fs'); // Import fs module
 const mongoose = require('mongoose');
 const cors = require('cors');
+const helmet = require('helmet'); // Import Helmet
 require('dotenv').config();
 const bodyParser = require('body-parser');
 const customerRoutes = require('./routes/customerRoutes.js');
