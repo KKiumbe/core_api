@@ -29,6 +29,14 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.json());
 
+
+app.use(helmet());
+app.use(cors({
+    origin: '*', 
+    credentials: true,
+}));
+app.use(bodyParser.json());
+
 // MongoDB Connection
 mongoose
     .connect(process.env.DATABASE_URL)
