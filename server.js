@@ -30,7 +30,6 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.json());
 
-
 app.use(helmet());
 app.use(cors({
     origin: '*', 
@@ -55,6 +54,6 @@ app.use('/api', receiptRoute);
 app.use('/api', paymentRoute);
 
 // Start the HTTPS server
-https.createServer(sslOptions, app).listen(PORT, () => {
-    console.log(`Server is running on https://localhost:${PORT}`);
+https.createServer(sslOptions, app).listen(PORT, '0.0.0.0', () => { // Corrected line
+    console.log(`Server is running on https://0.0.0.0:${PORT}`);
 });
