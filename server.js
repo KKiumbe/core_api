@@ -21,11 +21,13 @@ app.use(cookieParser());
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.json());
+
 app.use(helmet());
 app.use(cors({
     origin: '*', 
     credentials: true,
 }));
+app.use(bodyParser.json());
 
 // MongoDB Connection
 mongoose
@@ -45,5 +47,5 @@ app.use('/api', paymentRoute);
 
 // Start the HTTP server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on http://0.0.0.0:${PORT}`);
+  console.log(`Server is running on http://212.47.74.158:${PORT}`);
 });
