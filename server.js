@@ -1,6 +1,4 @@
 const express = require('express');
-const https = require('https'); // Import https module
-const fs = require('fs'); // Import fs module
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet'); // Import Helmet
@@ -19,23 +17,15 @@ const cookieParser = require('cookie-parser');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// SSL Options
-const sslOptions = {
-    key: fs.readFileSync('/taqa/API/server.key'),
-    cert: fs.readFileSync('/taqa/API/server.crt'),
-};
-
 app.use(cookieParser());
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.json());
-
 app.use(helmet());
 app.use(cors({
     origin: '*', 
     credentials: true,
 }));
-app.use(bodyParser.json());
 
 // MongoDB Connection
 mongoose
@@ -53,8 +43,7 @@ app.use('/api', collectionRoute);
 app.use('/api', receiptRoute);
 app.use('/api', paymentRoute);
 
-// Start the HTTPS server
-// Start the HTTPS server
-https.createServer(sslOptions, app).listen(PORT, '212.47.74.158', () => {
-  console.log(`Server is running on https://212.47.74.158:${PORT}`);
+// Start the HTTP server
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server is running on http://0.0.0.0:${PORT}`);
 });
