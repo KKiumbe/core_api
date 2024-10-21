@@ -54,6 +54,7 @@ app.use('/api', receiptRoute);
 app.use('/api', paymentRoute);
 
 // Start the HTTPS server
-https.createServer(sslOptions, app).listen(PORT, '0.0.0.0', () => { // Corrected line
-    console.log(`Server is running on https://0.0.0.0:${PORT}`);
+// Start the HTTPS server
+https.createServer(sslOptions, app).listen(PORT, '212.47.74.158', () => {
+  console.log(`Server is running on https://212.47.74.158:${PORT}`);
 });
