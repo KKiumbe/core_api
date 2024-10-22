@@ -1,7 +1,7 @@
 // Define the database connection
 datasource db {
   provider = "mongodb"
-  url      = env("DATABASE_URL") // MongoDB connection string from environment variables
+  url      = "mongodb+srv://qmbekevin:vafdy1-dySsev-hiwreh@cluster0.ab1cd.mongodb.net/myDatabase?retryWrites=true&w=majority"
 }
 
 // Generator for Prisma Client
