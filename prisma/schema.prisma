@@ -1,8 +1,7 @@
 // Define the database connection
 datasource db {
   provider = "mongodb"
-  url      = "mongodb://qmbekevin:vafdy1-dySsev-hiwreh@cluster0-shard-00-00.ab1cd.mongodb.net:27017,cluster0-shard-00-01.ab1cd.mongodb.net:27017,cluster0-shard-00-02.ab1cd.mongodb.net:27017/TaqaDB?ssl=true&replicaSet=Cluster0-shard-0&authSource=admin&retryWrites=true&w=majority"
-
+  url      = env("DATABASE_URL")
 }
 
 // Generator for Prisma Client
