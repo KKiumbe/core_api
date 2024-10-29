@@ -26,6 +26,16 @@ router.post('/callback', async (req, res) => {
     console.log('Payment Notification Received:', paymentInfo);
 
     try {
+        // Check if the transaction already exists
+        const existingTransaction = await prisma.mpesaTransaction.findUnique({
+            where: { TransID: paymentInfo.TransID },
+        });
+
+        if (existingTransaction) {
+            console.log(`Transaction with ID ${paymentInfo.TransID} already exists. Skipping save.`);
+            return res.status(409).json({ message: 'Transaction already processed.', transactionId: paymentInfo.TransID });
+        }
+
         // Save the payment transaction to the database
         const transaction = await prisma.mpesaTransaction.create({
             data: {

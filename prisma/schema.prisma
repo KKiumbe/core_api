@@ -151,7 +151,7 @@ model Payment {
 // MpesaTransaction model for tracking MPESA transactions separately
 model MpesaTransaction {
   id              String      @id @default(auto()) @map("_id") @db.ObjectId
-  TransID         String      
+  TransID         String       @unique     
   TransTime       DateTime    
   TransAmount     Float       
   BillRefNumber   String  
