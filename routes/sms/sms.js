@@ -32,6 +32,8 @@ function sanitizePhoneNumber(phone) {
 
 
 const sendSMS = async (mobile, message) => {
+
+    console.log(`sanitised number is ${sanitizePhoneNumber(mobile)}`);
     try {
         const response = await axios.post(SMS_ENDPOINT, {
             partnerID: PARTNER_ID,
