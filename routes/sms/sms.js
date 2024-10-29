@@ -10,16 +10,26 @@ const SHORTCODE = process.env.SHORTCODE;
 //const BULK_SMS_ENDPOINT = process.env.BULK_SMS_ENDPOINT;
 const SMS_ENDPOINT = process.env.SMS_ENDPOINT;
 
-// Function to sanitize the phone number
-const sanitizePhoneNumber = (phone) => {
-    if (phone.startsWith('254')) {
-        return phone; // Already in the correct format
-    } else if (phone.startsWith('0')) {
-        return '254' + phone.slice(1); // Replace leading '0' with '254'
-    } else {
-        return '254' + phone; // Assume it's a local number without a prefix
+
+function sanitizePhoneNumber(phone) {
+    // Ensure phone is a string before sanitizing
+    if (typeof phone !== 'string') {
+        console.error('Invalid phone number format:', phone);
+        return ''; // Return an empty string or handle as necessary
     }
-};
+
+    // Sanitize logic, assuming phone should be in standard format
+    if (phone.startsWith('0')) {
+        return `+254${phone.slice(1)}`;
+    } else if (phone.startsWith('254')) {
+        return `+${phone}`;
+    } else if (phone.startsWith('+254')) {
+        return phone;
+    }
+    // Default return for unexpected formats
+    return `+254${phone}`;
+}
+
 
 const sendSMS = async (mobile, message) => {
     try {
