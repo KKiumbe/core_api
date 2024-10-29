@@ -12,23 +12,23 @@ const SMS_ENDPOINT = process.env.SMS_ENDPOINT;
 
 
 function sanitizePhoneNumber(phone) {
-    // Ensure phone is a string before sanitizing
     if (typeof phone !== 'string') {
         console.error('Invalid phone number format:', phone);
-        return ''; // Return an empty string or handle as necessary
+        return ''; 
     }
 
-    // Sanitize logic, assuming phone should be in standard format
-    if (phone.startsWith('0')) {
-        return `+254${phone.slice(1)}`;
+    // Remove any '+' if present and format based on common cases
+    if (phone.startsWith('+254')) {
+        return phone.slice(1); // Remove the '+' to get '254...'
+    } else if (phone.startsWith('0')) {
+        return `254${phone.slice(1)}`; // Convert "0" prefix to "254"
     } else if (phone.startsWith('254')) {
-        return `+${phone}`;
-    } else if (phone.startsWith('+254')) {
-        return phone;
+        return phone; // Already in correct format
+    } else {
+        return `254${phone}`; // Default case: prepend "254" if missing
     }
-    // Default return for unexpected formats
-    return `+254${phone}`;
 }
+
 
 
 const sendSMS = async (mobile, message) => {
