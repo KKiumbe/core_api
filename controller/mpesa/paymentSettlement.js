@@ -136,8 +136,29 @@ const message = `Dear ${customer.firstName}, payment received successfully. ${fo
 // Step 3: Call sendSMS with the formatted message
 
 console.log(`customer phone number ${customer.phoneNumber}`);
+
+
+function sanitizePhoneNumber(phone) {
+    if (typeof phone !== 'string') {
+        console.error('Invalid phone number format:', phone);
+        return ''; 
+    }
+
+    // Remove any '+' if present and format based on common cases
+    if (phone.startsWith('+254')) {
+        return phone.slice(1); // Remove the '+' to get '254...'
+    } else if (phone.startsWith('0')) {
+        return `254${phone.slice(1)}`; // Convert "0" prefix to "254"
+    } else if (phone.startsWith('254')) {
+        return phone; // Already in correct format
+    } else {
+        return `254${phone}`; // Default case: prepend "254" if missing
+    }
+}
+
+const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber)
 await sendSMS({
-    mobile: customer?.phoneNumber,
+    mobile: sanitisedNumber,
     message: message,
 });
 

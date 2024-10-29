@@ -11,36 +11,20 @@ const SHORTCODE = process.env.SHORTCODE;
 const SMS_ENDPOINT = process.env.SMS_ENDPOINT;
 
 
-function sanitizePhoneNumber(phone) {
-    if (typeof phone !== 'string') {
-        console.error('Invalid phone number format:', phone);
-        return ''; 
-    }
 
-    // Remove any '+' if present and format based on common cases
-    if (phone.startsWith('+254')) {
-        return phone.slice(1); // Remove the '+' to get '254...'
-    } else if (phone.startsWith('0')) {
-        return `254${phone.slice(1)}`; // Convert "0" prefix to "254"
-    } else if (phone.startsWith('254')) {
-        return phone; // Already in correct format
-    } else {
-        return `254${phone}`; // Default case: prepend "254" if missing
-    }
-}
 
 
 
 const sendSMS = async (mobile, message) => {
 
-    console.log(`sanitised number is ${sanitizePhoneNumber(mobile)}`);
+    console.log(`sanitised number is ${mobile}`);
     try {
         const response = await axios.post(SMS_ENDPOINT, {
             partnerID: PARTNER_ID,
             apikey: SMS_API_KEY,
             pass_type: "plain",
             clientsmsid: Math.floor(Math.random() * 10000), // Ensure this is unique if required
-            mobile: sanitizePhoneNumber(mobile),
+            mobile: mobile,
             message: message,
             shortcode: SHORTCODE,
         });
