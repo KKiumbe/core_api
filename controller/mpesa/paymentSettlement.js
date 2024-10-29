@@ -1,7 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Helper function to generate a receipt number with "RCPT" prefix
+// Helper function to generate a unique receipt number with "RCPT" prefix
 async function generateUniqueReceiptNumber() {
     let receiptNumber;
     let exists = true;
@@ -67,6 +67,7 @@ async function settleInvoice() {
                 });
 
                 if (!existingReceiptPayment) {
+                    // Save the transaction in Payment with receipted: false
                     await prisma.payment.create({
                         data: {
                             amount: paymentAmount,
@@ -74,7 +75,7 @@ async function settleInvoice() {
                             mpesaTransactionId: MpesaCode,
                             receipted: false,
                             createdAt: TransTime,
-                            receiptId: null,
+                            receiptId: null, // Explicitly set receiptId to null
                         },
                     });
                 } else {
