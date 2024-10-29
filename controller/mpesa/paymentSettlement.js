@@ -12,7 +12,6 @@ function generateReceiptNumber() {
 
 async function settleInvoice() {
     try {
-        // Step 1: Retrieve all unprocessed Mpesa transactions
         const mpesaTransactions = await prisma.mpesaTransaction.findMany({
             where: { processed: false },
         });
@@ -22,7 +21,6 @@ async function settleInvoice() {
             return;
         }
 
-        // Step 2: Loop through each unprocessed Mpesa transaction
         for (const transaction of mpesaTransactions) {
             const { BillRefNumber, TransAmount, id, FirstName, MSISDN: phone, TransID: MpesaCode, TransTime } = transaction;
 
@@ -34,7 +32,6 @@ async function settleInvoice() {
                 continue;
             }
 
-            // Check if the Mpesa transaction already exists in the Payment table
             const existingPayment = await prisma.payment.findUnique({
                 where: { mpesaTransactionId: MpesaCode },
             });
@@ -44,19 +41,22 @@ async function settleInvoice() {
                 continue;
             }
 
-            // Find the customer by matching the BillRefNumber (phone number)
             const customer = await prisma.customer.findUnique({
                 where: { phoneNumber: BillRefNumber },
                 select: { id: true, closingBalance: true },
             });
 
             if (!customer) {
-                // Generate a unique receipt number
-                const receiptNumber = generateReceiptNumber(); // Update your receipt number generation logic
+                const receiptNumber = generateReceiptNumber(); // Generate a receipt number
 
-                // Check if a payment with the same receipt number already exists
-                const existingReceiptPayment = await prisma.payment.findUnique({
-                    where: { receiptId: receiptNumber }, // Adjust according to your actual schema
+                // Check for existing payments that match this transaction but may or may not have a receipt
+                const existingReceiptPayment = await prisma.payment.findFirst({
+                    where: {
+                        OR: [
+                            { receiptId: { not: null } }, // Check if there's a payment with a receipt
+                            { mpesaTransactionId: MpesaCode, receiptId: null } // Or check if it's the same transaction without a receipt
+                        ]
+                    }
                 });
 
                 if (!existingReceiptPayment) {
@@ -68,13 +68,14 @@ async function settleInvoice() {
                             mpesaTransactionId: MpesaCode,
                             receipted: false,
                             createdAt: TransTime,
+                            receiptId: null, // No receipt yet
                         },
                     });
 
                     // Create a new receipt for the unlinked payment
-                    await createReceipt(paymentAmount, MpesaCode, FirstName, phone, null, null, payment.id, receiptNumber);
+                    await createReceipt(paymentAmount, MpesaCode, FirstName, phone, null, null, payment.id);
                 } else {
-                    console.log(`Payment with receipt number ${receiptNumber} already exists. Skipping receipt creation.`);
+                    console.log(`Payment already exists for transaction ${MpesaCode}. Skipping receipt creation.`);
                 }
 
                 // Mark the Mpesa transaction as processed
@@ -94,6 +95,7 @@ async function settleInvoice() {
         console.error('Error processing Mpesa transactions in settleInvoice:', error);
     }
 }
+
 
 
 
