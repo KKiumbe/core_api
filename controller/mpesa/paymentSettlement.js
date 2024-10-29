@@ -55,20 +55,21 @@ async function settleInvoice() {
                 select: { id: true, closingBalance: true },
             });
 
-            // If no customer found, save transaction without receipt
             if (!customer) {
+                // Handle the case where there is no customer
                 const existingReceiptPayment = await prisma.payment.findFirst({
                     where: {
                         OR: [
-                            { receiptId: { not: null } }, // Check if there's a payment with a receipt
-                            { mpesaTransactionId: MpesaCode, receiptId: null } // Or check if it's the same transaction without a receipt
+                            { receiptId: { not: null } },
+                            { mpesaTransactionId: MpesaCode, receiptId: null }
                         ]
                     }
                 });
 
                 if (!existingReceiptPayment) {
+                    console.log(`No existing receipt payment found for transaction ${MpesaCode}. Creating payment.`);
                     // Save the transaction in Payment with receipted: false
-                    await prisma.payment.create({
+                    const payment = await prisma.payment.create({
                         data: {
                             amount: paymentAmount,
                             modeOfPayment: 'MPESA',
@@ -78,16 +79,51 @@ async function settleInvoice() {
                             receiptId: null, // Explicitly set receiptId to null
                         },
                     });
-                } else {
-                    console.log(`Payment already exists for transaction ${MpesaCode}. Skipping receipt creation.`);
+
+                    // Create the receipt only if it doesn't already exist for this payment
+                    const existingReceipt = await prisma.receipt.findUnique({
+                        where: { paymentId: payment.id },
+                    });
+
+                    if (!existingReceipt) {
+                        const receiptNumber = await generateUniqueReceiptNumber();
+                        await prisma.receipt.create({
+                            data: {
+                                amount: paymentAmount,
+                                modeOfPayment: 'MPESA',
+                                paidBy: FirstName,
+                                transactionCode: MpesaCode,
+                                phoneNumber: phone,
+                                paymentId: payment.id, // Link to the created payment
+                                customerId: customer.id,
+                                receiptInvoices: {
+                                    create: { invoiceId: null }, // Set this according to your invoice logic
+                                },
+                                receiptNumber: receiptNumber,
+                                createdAt: new Date(),
+                            },
+                        });
+
+                        // Update the payment with the generated receipt ID
+                        await prisma.payment.update({
+                            where: { id: payment.id },
+                            data: { receiptId: receiptNumber }, // Update payment with the new receipt ID
+                        });
+                    } else {
+                        console.log(`Receipt already exists for payment ${payment.id}. Skipping receipt creation.`);
+                    }
+
+                    // Mark the Mpesa transaction as processed
+                    await prisma.mpesaTransaction.update({
+                        where: { id: id },
+                        data: { processed: true },
+                    });
+
+                    console.log(`No customer found with BillRefNumber ${BillRefNumber}. Transaction saved with receipted: false.`);
+                    continue;
                 }
 
-                await prisma.mpesaTransaction.update({
-                    where: { id: id },
-                    data: { processed: true },
-                });
-
-                console.log(`No customer found with BillRefNumber ${BillRefNumber}. Transaction saved with receipted: false.`);
+                console.log(`Payment already exists for transaction ${MpesaCode}. Skipping receipt creation.`);
                 continue;
             }
 
@@ -99,34 +135,42 @@ async function settleInvoice() {
                     mpesaTransactionId: MpesaCode,
                     receipted: true,
                     createdAt: TransTime,
-                    receiptId: null, // Initially set receiptId to null; will be updated after receipt creation
+                    receiptId: null, // Initially set receiptId to null
                 },
             });
 
-            // Create the receipt
-            const receiptNumber = await generateUniqueReceiptNumber();
-            await prisma.receipt.create({
-                data: {
-                    amount: paymentAmount,
-                    modeOfPayment: 'MPESA',
-                    paidBy: FirstName,
-                    transactionCode: MpesaCode,
-                    phoneNumber: phone,
-                    paymentId: payment.id,
-                    customerId: customer.id,
-                    receiptInvoices: {
-                        create: { invoiceId: null }, // Set this according to your invoice logic
+            // Create the receipt only if it doesn't already exist for this payment
+            const existingReceipt = await prisma.receipt.findUnique({
+                where: { paymentId: payment.id },
+            });
+
+            if (!existingReceipt) {
+                const receiptNumber = await generateUniqueReceiptNumber();
+                await prisma.receipt.create({
+                    data: {
+                        amount: paymentAmount,
+                        modeOfPayment: 'MPESA',
+                        paidBy: FirstName,
+                        transactionCode: MpesaCode,
+                        phoneNumber: phone,
+                        paymentId: payment.id, // Link to the created payment
+                        customerId: customer.id,
+                        receiptInvoices: {
+                            create: { invoiceId: null }, // Set this according to your invoice logic
+                        },
+                        receiptNumber: receiptNumber,
+                        createdAt: new Date(),
                     },
-                    receiptNumber: receiptNumber,
-                    createdAt: new Date(),
-                },
-            });
+                });
 
-            // Update the payment with the generated receipt ID
-            await prisma.payment.update({
-                where: { id: payment.id },
-                data: { receiptId: receiptNumber }, // Update payment with the new receipt ID
-            });
+                // Update the payment with the generated receipt ID
+                await prisma.payment.update({
+                    where: { id: payment.id },
+                    data: { receiptId: receiptNumber }, // Update payment with the new receipt ID
+                });
+            } else {
+                console.log(`Receipt already exists for payment ${payment.id}. Skipping receipt creation.`);
+            }
 
             // Mark the Mpesa transaction as processed
             await prisma.mpesaTransaction.update({
@@ -134,11 +178,12 @@ async function settleInvoice() {
                 data: { processed: true },
             });
 
-            console.log(`Processed payment and created receipt ${receiptNumber} for transaction ${MpesaCode}.`);
+            console.log(`Processed payment and created receipt for transaction ${MpesaCode}.`);
         }
     } catch (error) {
         console.error('Error processing Mpesa transactions in settleInvoice:', error);
     }
 }
+
 
 module.exports = { settleInvoice };
