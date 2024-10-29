@@ -2,39 +2,6 @@ const { PrismaClient } = require('@prisma/client');
 const { sendSMS } = require('../../routes/sms/sms');
 const prisma = new PrismaClient();
 
-// Helper function to generate a unique receipt number with "RCPT" prefix
-async function generateUniqueReceiptNumber() {
-    let receiptNumber;
-    let exists = true;
-
-    while (exists) {
-        const randomDigits = Math.floor(10000 + Math.random() * 90000);
-        receiptNumber = `RCPT${randomDigits}`;
-
-        exists = await prisma.receipt.findUnique({
-            where: { receiptNumber: receiptNumber },
-        }) !== null;
-    }
-
-    return receiptNumber;
-}
-
-// Function to create payment record when no customer is found
-async function createPaymentRecord(transaction, paymentAmount, FirstName, phone, MpesaCode, receiptId) {
-    const payment = await prisma.payment.create({
-        data: {
-            amount: paymentAmount,
-            modeOfPayment: 'MPESA',
-            mpesaTransactionId: MpesaCode,
-            receipted: false,
-            createdAt: transaction.TransTime,
-            receiptId: receiptId,
-        },
-    });
-
-    console.log(`Created payment record for transaction ${MpesaCode} with receipted: false.`);
-}
-
 async function settleInvoice() {
     try {
         const mpesaTransactions = await prisma.mpesaTransaction.findMany({
@@ -68,7 +35,7 @@ async function settleInvoice() {
 
             const customer = await prisma.customer.findUnique({
                 where: { phoneNumber: BillRefNumber },
-                select: { id: true, closingBalance: true, phoneNumber: true ,firstName:true},
+                select: { id: true, closingBalance: true, phoneNumber: true, firstName: true },
             });
 
             if (!customer) {
@@ -89,8 +56,7 @@ async function settleInvoice() {
             });
 
             const receiptNumber = await generateUniqueReceiptNumber();
-
-            const { receipts, remainingAmount } = await processInvoices(paymentAmount, customer.id, payment.id);
+            const { receipts, remainingAmount, newClosingBalance } = await processInvoices(paymentAmount, customer.id, payment.id);
 
             const receiptData = await prisma.receipt.create({
                 data: {
@@ -119,49 +85,21 @@ async function settleInvoice() {
                 data: { processed: true },
             });
 
+            // Update customer closing balance for the SMS message
+            const finalClosingBalance = newClosingBalance;
 
+            // Format the closing balance message
+            const formattedBalanceMessage = finalClosingBalance < 0
+                ? `Your closing balance is an overpayment of KES ${Math.abs(finalClosingBalance)}`
+                : `Your closing balance is KES ${finalClosingBalance}`;
 
-        // Assume closingBalance and phoneNumber are available from the customer object
+            // Construct and send the SMS message
+            // After invoice settlement and balance adjustment
+            const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. ${formattedBalanceMessage}. Thank you for your payment!`;
 
-// Step 1: Format closing balance message
-const closingBalance = customer.closingBalance;
-const formattedBalanceMessage =
-    closingBalance < 0
-        ? `Your closing balance is an overpayment of KES ${Math.abs(closingBalance)}`
-        : `Your closing balance is KES ${closingBalance}`;
+            const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber);
 
-// Step 2: Construct the SMS message
-const message = `Dear ${customer.firstName}, payment received successfully. ${formattedBalanceMessage}. Thank you for your payment!`;
-
-// Step 3: Call sendSMS with the formatted message
-
-console.log(`customer phone number ${customer.phoneNumber}`);
-
-
-function sanitizePhoneNumber(phone) {
-    if (typeof phone !== 'string') {
-        console.error('Invalid phone number format:', phone);
-        return ''; 
-    }
-
-    // Remove any '+' if present and format based on common cases
-    if (phone.startsWith('+254')) {
-        return phone.slice(1); // Remove the '+' to get '254...'
-    } else if (phone.startsWith('0')) {
-        return `254${phone.slice(1)}`; // Convert "0" prefix to "254"
-    } else if (phone.startsWith('254')) {
-        return phone; // Already in correct format
-    } else {
-        return `254${phone}`; // Default case: prepend "254" if missing
-    }
-}
-
-const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber)
-await sendSMS(
-   sanitisedNumber,message
-);
-
-
+            await sendSMS(sanitisedNumber, message);
 
             console.log(`Processed payment and created receipt for transaction ${MpesaCode}.`);
         }
@@ -177,7 +115,7 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
 
     let remainingAmount = paymentAmount;
     const receipts = [];
-    let totalPaidAmount = 0; // Track total amount applied to invoices
+    let totalPaidAmount = 0;
 
     await prisma.payment.update({
         where: { id: paymentId },
@@ -198,36 +136,43 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
             },
         });
 
-        receipts.push({
-            invoiceId: updatedInvoice.id,
-        });
-
+        receipts.push({ invoiceId: updatedInvoice.id });
         remainingAmount -= paymentForInvoice;
-        totalPaidAmount += paymentForInvoice; // Accumulate the total paid amount
+        totalPaidAmount += paymentForInvoice;
     }
 
-    // Update the customer's closing balance
     const customer = await prisma.customer.findUnique({
         where: { id: customerId },
         select: { closingBalance: true },
     });
 
-    let newClosingBalance;
-    if (remainingAmount > 0) {
-        // Overpayment scenario
-        newClosingBalance = customer.closingBalance - totalPaidAmount; // Treat overpayment as negative balance
-    } else {
-        // Normal scenario
-        newClosingBalance = customer.closingBalance - totalPaidAmount; // Regular adjustment
-    }
+    const newClosingBalance = remainingAmount > 0
+        ? customer.closingBalance + remainingAmount
+        : customer.closingBalance - totalPaidAmount;
 
     await prisma.customer.update({
         where: { id: customerId },
         data: { closingBalance: newClosingBalance },
     });
 
-    return { receipts, remainingAmount, newClosingBalance }; // Return the updated balance
+    return { receipts, remainingAmount, newClosingBalance };
 }
 
+function sanitizePhoneNumber(phone) {
+    if (typeof phone !== 'string') {
+        console.error('Invalid phone number format:', phone);
+        return '';
+    }
+
+    if (phone.startsWith('+254')) {
+        return phone.slice(1);
+    } else if (phone.startsWith('0')) {
+        return `254${phone.slice(1)}`;
+    } else if (phone.startsWith('254')) {
+        return phone;
+    } else {
+        return `254${phone}`;
+    }
+}
 
 module.exports = { settleInvoice };
