@@ -3,7 +3,7 @@ const prisma = new PrismaClient();
 
 // Create a new customer
 const createCustomer = async (req, res) => {
-    const { firstName, lastName, email, phoneNumber, gender, county, town, location, category, monthlyCharge, garbageCollectionDay, collected } = req.body;
+    const { firstName, lastName, email, phoneNumber, gender, county, town, location, estateName, building, houseNumber, category, monthlyCharge, garbageCollectionDay, collected, closingBalance } = req.body;
 
     // Check if all required fields are provided
     if (!firstName || !lastName || !phoneNumber || !gender || !monthlyCharge || !garbageCollectionDay) {
@@ -43,10 +43,14 @@ const createCustomer = async (req, res) => {
                 county,
                 town,
                 location,
+                estateName,           // Optional field for estate name
+                building,              // Optional field for building name
+                houseNumber,           // Optional field for house number
                 category,
                 monthlyCharge,
-                garbageCollectionDay, // Enum value for garbage collection day
+                garbageCollectionDay,  // Enum value for garbage collection day
                 collected: collected ?? false, // Set collected to false if not provided
+                closingBalance: closingBalance ?? 0, // Set closingBalance to 0 if not provided
             },
         });
 

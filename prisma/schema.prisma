@@ -34,6 +34,9 @@ model Customer {
   county                String?
   town                  String?
   location              String?
+  estateName            String?               // Optional estate name
+  building              String?               // Optional building name
+  houseNumber           String?               // Optional house number
   category              String?
   monthlyCharge         Float
   status                CustomerStatus        @default(ACTIVE)
@@ -43,6 +46,7 @@ model Customer {
   collected             Boolean               @default(false)  
   closingBalance        Float                 @default(0) // Add closing balance field
 }
+
 
 // Enum for days of the week
 enum GarbageCollectionDay {
