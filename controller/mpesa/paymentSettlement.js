@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { sendSMS } = require('../../routes/sms/sms');
 const prisma = new PrismaClient();
 
 // Helper function to generate a unique receipt number with "RCPT" prefix
@@ -118,6 +119,28 @@ async function settleInvoice() {
                 data: { processed: true },
             });
 
+
+
+        // Assume closingBalance and phoneNumber are available from the customer object
+
+// Step 1: Format closing balance message
+const closingBalance = customer.closingBalance;
+const formattedBalanceMessage =
+    closingBalance < 0
+        ? `Your closing balance is an overpayment of KES ${Math.abs(closingBalance)}`
+        : `Your closing balance is KES ${closingBalance}`;
+
+// Step 2: Construct the SMS message
+const message = `Dear ${customer.firstName}, payment received successfully. ${formattedBalanceMessage}. Thank you for your payment!`;
+
+// Step 3: Call sendSMS with the formatted message
+await sendSMS({
+    mobile: customer.phoneNumber,
+    message: message,
+});
+
+
+
             console.log(`Processed payment and created receipt for transaction ${MpesaCode}.`);
         }
     } catch (error) {
@@ -132,6 +155,7 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
 
     let remainingAmount = paymentAmount;
     const receipts = [];
+    let totalPaidAmount = 0; // Track total amount applied to invoices
 
     await prisma.payment.update({
         where: { id: paymentId },
@@ -157,24 +181,31 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
         });
 
         remainingAmount -= paymentForInvoice;
+        totalPaidAmount += paymentForInvoice; // Accumulate the total paid amount
     }
 
+    // Update the customer's closing balance
+    const customer = await prisma.customer.findUnique({
+        where: { id: customerId },
+        select: { closingBalance: true },
+    });
+
+    let newClosingBalance;
     if (remainingAmount > 0) {
-        const customer = await prisma.customer.findUnique({
-            where: { id: customerId },
-            select: { closingBalance: true },
-        });
-
-        const newClosingBalance = customer.closingBalance - paymentAmount;
-        await prisma.customer.update({
-            where: { id: customerId },
-            data: { closingBalance: newClosingBalance },
-        });
-
-        console.log(`Overpayment detected. New closing balance: ${newClosingBalance}`);
+        // Overpayment scenario
+        newClosingBalance = customer.closingBalance - totalPaidAmount; // Treat overpayment as negative balance
+    } else {
+        // Normal scenario
+        newClosingBalance = customer.closingBalance - totalPaidAmount; // Regular adjustment
     }
 
-    return { receipts, remainingAmount };
+    await prisma.customer.update({
+        where: { id: customerId },
+        data: { closingBalance: newClosingBalance },
+    });
+
+    return { receipts, remainingAmount, newClosingBalance }; // Return the updated balance
 }
+
 
 module.exports = { settleInvoice };
