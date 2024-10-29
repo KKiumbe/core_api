@@ -9,13 +9,13 @@ async function generateUniqueReceiptNumber() {
     while (exists) {
         const randomDigits = Math.floor(10000 + Math.random() * 90000); // Generates a number between 10000 and 99999
         receiptNumber = `RCPT${randomDigits}`; // Prefix with "RCPT"
-        
+
         // Check if this receipt number already exists
         exists = await prisma.receipt.findUnique({
             where: { receiptNumber: receiptNumber },
         }) !== null;
     }
-    
+
     return receiptNumber; // Return a unique receipt number
 }
 
@@ -56,7 +56,8 @@ async function settleInvoice() {
             });
 
             if (!customer) {
-                // Handle the case where there is no customer
+                console.log(`No customer found with BillRefNumber ${BillRefNumber}.`);
+
                 const existingReceiptPayment = await prisma.payment.findFirst({
                     where: {
                         OR: [
@@ -95,7 +96,6 @@ async function settleInvoice() {
                                 transactionCode: MpesaCode,
                                 phoneNumber: phone,
                                 paymentId: payment.id, // Link to the created payment
-                                customerId: customer.id,
                                 receiptInvoices: {
                                     create: { invoiceId: null }, // Set this according to your invoice logic
                                 },
@@ -119,12 +119,11 @@ async function settleInvoice() {
                         data: { processed: true },
                     });
 
-                    console.log(`No customer found with BillRefNumber ${BillRefNumber}. Transaction saved with receipted: false.`);
-                    continue;
+                    console.log(`Transaction saved with receipted: false.`);
+                } else {
+                    console.log(`Payment already exists for transaction ${MpesaCode}. Skipping receipt creation.`);
                 }
-
-                console.log(`Payment already exists for transaction ${MpesaCode}. Skipping receipt creation.`);
-                continue;
+                continue; // Ensure we skip further processing for this transaction
             }
 
             // Customer exists: create payment and receipt
@@ -184,6 +183,5 @@ async function settleInvoice() {
         console.error('Error processing Mpesa transactions in settleInvoice:', error);
     }
 }
-
 
 module.exports = { settleInvoice };
