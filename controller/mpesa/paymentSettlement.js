@@ -7,8 +7,8 @@ async function generateUniqueReceiptNumber() {
     let exists = true;
 
     while (exists) {
-        const randomDigits = Math.floor(10000 + Math.random() * 90000); // Generates a number between 10000 and 99999
-        receiptNumber = `RCPT${randomDigits}`; // Prefix with "RCPT"
+        const randomDigits = Math.floor(10000 + Math.random() * 90000);
+        receiptNumber = `RCPT${randomDigits}`;
 
         exists = await prisma.receipt.findUnique({
             where: { receiptNumber: receiptNumber },
@@ -16,6 +16,22 @@ async function generateUniqueReceiptNumber() {
     }
 
     return receiptNumber;
+}
+
+// Function to create payment record when no customer is found
+async function createPaymentRecord(transaction, paymentAmount, FirstName, phone, MpesaCode, receiptId) {
+    const payment = await prisma.payment.create({
+        data: {
+            amount: paymentAmount,
+            modeOfPayment: 'MPESA',
+            mpesaTransactionId: MpesaCode,
+            receipted: false,
+            createdAt: transaction.TransTime,
+            receiptId: receiptId,
+        },
+    });
+
+    console.log(`Created payment record for transaction ${MpesaCode} with receipted: false.`);
 }
 
 async function settleInvoice() {
@@ -65,7 +81,7 @@ async function settleInvoice() {
                     amount: paymentAmount,
                     modeOfPayment: 'MPESA',
                     mpesaTransactionId: MpesaCode,
-                    receipted: false,
+                    receipted: true,
                     createdAt: TransTime,
                     receiptId: null,
                 },
@@ -73,7 +89,6 @@ async function settleInvoice() {
 
             const receiptNumber = await generateUniqueReceiptNumber();
 
-            // Retrieve and process invoices for the receipt creation
             const { receipts, remainingAmount } = await processInvoices(paymentAmount, customer.id, payment.id);
 
             const receiptData = await prisma.receipt.create({
@@ -116,7 +131,7 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
     });
 
     let remainingAmount = paymentAmount;
-    const receipts = []; 
+    const receipts = [];
 
     await prisma.payment.update({
         where: { id: paymentId },
@@ -161,6 +176,5 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
 
     return { receipts, remainingAmount };
 }
-
 
 module.exports = { settleInvoice };
