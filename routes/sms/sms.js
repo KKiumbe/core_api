@@ -20,25 +20,26 @@ const sendSMS = async (mobile, message) => {
 
     console.log(`sanitised number is ${mobile}`);
     try {
-    //    const payload = {
-    //         partnerID: PARTNER_ID,
-    //         apikey: SMS_API_KEY,
-    //         mobile,
-    //         message,
-    //         shortcode: SHORTCODE,
-    //     }
+       const payload = {
+            partnerID: PARTNER_ID,
+            apikey: SMS_API_KEY,
+            mobile,
+            message,
+            shortcode: SHORTCODE,
+        }
 
 
-    const payload = {
-        partnerID: "4680",
-        apikey: "146d35f516edcdaf3cc86bb388f8afde",
-        mobile: "254702550190", // Flatten the mobile field
-        message: "Dear Kevin, payment received successfully. Your closing balance is an overpayment of KES 1. Thank you for your payment!", // Separate the message field
-        shortcode: "SIKIKA_LTD"
-    };
+    // const payload = {
+    //     partnerID: "4680",
+    //     apikey: "146d35f516edcdaf3cc86bb388f8afde",
+    //     mobile: "254702550190", // Flatten the mobile field
+    //     message: "Dear Kevin, payment received successfully. Your closing balance is an overpayment of KES 1. Thank you for your payment!", // Separate the message field
+    //     shortcode: "SIKIKA_LTD"
+    // };
     
 
-        console.log(`this is payload ${payload}`);
+    console.log(`this is payload ${JSON.stringify(payload)}`);
+
         const response = await axios.post(SMS_ENDPOINT,payload
         );
         console.log(`SMS sent to ${mobile}: ${message}`);
