@@ -52,7 +52,7 @@ async function settleInvoice() {
 
             if (!customer) {
                 // Generate a unique receipt number
-                const receiptNumber = generateUniqueReceiptNumber(); // Update your receipt number generation logic
+                const receiptNumber = generateReceiptNumber(); // Update your receipt number generation logic
 
                 // Check if a payment with the same receipt number already exists
                 const existingReceiptPayment = await prisma.payment.findUnique({
