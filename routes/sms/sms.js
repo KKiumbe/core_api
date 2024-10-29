@@ -19,13 +19,17 @@ const sendSMS = async (mobile, message) => {
 
     console.log(`sanitised number is ${mobile}`);
     try {
-        const response = await axios.post(SMS_ENDPOINT, {
+       const payload = {
             partnerID: PARTNER_ID,
             apikey: SMS_API_KEY,
             mobile: mobile,
             message: message,
             shortcode: SHORTCODE,
-        });
+        }
+
+        console.log(`this is payload ${payload}`);
+        const response = await axios.post(SMS_ENDPOINT,payload
+        );
         console.log(`SMS sent to ${mobile}: ${message}`);
         return response.data; // Return the response for further processing if needed
     } catch (error) {
