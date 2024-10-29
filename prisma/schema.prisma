@@ -48,7 +48,6 @@ model Customer {
   closingBalance        Float                 @default(0) // Add closing balance field
 }
 
-
 // Enum for days of the week
 enum GarbageCollectionDay {
   MONDAY
@@ -114,21 +113,20 @@ enum ModeOfPayment {
 model Receipt {
   id             String      @id @default(auto()) @map("_id") @db.ObjectId
   receiptNumber   String      @unique // Ensure uniqueness of the receipt number
-
   amount         Float
   modeOfPayment  ModeOfPayment
   paidBy         String?
   transactionCode String?
   phoneNumber    String?
-  paymentId      String   @unique @db.ObjectId // Link to Payment
-  payment        Payment     @relation(fields: [paymentId], references: [id]) 
+  paymentId      String? @db.ObjectId // Link to Payment @unique
+  payment        Payment?   @relation(fields: [paymentId], references: [id]) 
 
   // Many-to-many relation to Invoice through ReceiptInvoice
   receiptInvoices ReceiptInvoice[] @relation("InvoiceReceipts")
 
   customer       Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
   customerId     String      @db.ObjectId
-  createdAt DateTime @default(now())
+  createdAt      DateTime    @default(now())
 }
 
 // Payment model
@@ -146,7 +144,6 @@ model Payment {
   // Capture when the payment was created
   createdAt               DateTime    @default(now()) // Automatically set when created
 }
-
 
 // MpesaTransaction model for tracking MPESA transactions separately
 model MpesaTransaction {
