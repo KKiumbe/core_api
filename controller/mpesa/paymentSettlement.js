@@ -68,7 +68,7 @@ async function settleInvoice() {
 
             const customer = await prisma.customer.findUnique({
                 where: { phoneNumber: BillRefNumber },
-                select: { id: true, closingBalance: true, phoneNumber: true },
+                select: { id: true, closingBalance: true, phoneNumber: true ,firstName:true},
             });
 
             if (!customer) {
