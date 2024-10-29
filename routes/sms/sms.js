@@ -16,14 +16,14 @@ console.log(SMS_ENDPOINT);
 
 
 
-const sendSMS = async (mobile, message) => {
+const sendSMS = async (sanitisedNumber, message) => {
 
     console.log(`sanitised number is ${mobile}`);
     try {
        const payload = {
             partnerID: PARTNER_ID,
             apikey: SMS_API_KEY,
-            mobile,
+            mobile:sanitisedNumber,
             message,
             shortcode: SHORTCODE,
         }
