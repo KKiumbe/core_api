@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { lipaNaMpesa } = require('../mpesa/payment.js');
 const prisma = require('../../prismaClient'); // Adjust the import based on your setup
+const { settleInvoice } = require('../mpesa/paymentSettlement.js');
 
 router.post('/callback', async (req, res) => {
     const paymentData = req.body; // M-Pesa sends the payment details in the body
@@ -44,7 +45,7 @@ router.post('/callback', async (req, res) => {
 
         if (customer) {
             // Automatically settle the invoice
-            await settleInvoice(customer.id, paymentInfo.TransAmount);
+            await settleInvoice();
             console.log(`Invoice for customer ${customer.phone} settled.`);
         } else {
             // Handle manual matching process
