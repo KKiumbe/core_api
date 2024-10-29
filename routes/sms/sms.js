@@ -22,8 +22,6 @@ const sendSMS = async (mobile, message) => {
         const response = await axios.post(SMS_ENDPOINT, {
             partnerID: PARTNER_ID,
             apikey: SMS_API_KEY,
-            pass_type: "plain",
-            clientsmsid: Math.floor(Math.random() * 10000), // Ensure this is unique if required
             mobile: mobile,
             message: message,
             shortcode: SHORTCODE,
