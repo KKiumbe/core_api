@@ -18,7 +18,7 @@ console.log(SMS_ENDPOINT);
 
 const sendSMS = async (sanitisedNumber, message) => {
 
-    console.log(`sanitised number is ${mobile}`);
+    console.log(`sanitised number is ${sanitisedNumber}`);
     try {
        const payload = {
             partnerID: PARTNER_ID,
