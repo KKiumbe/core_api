@@ -134,8 +134,10 @@ const formattedBalanceMessage =
 const message = `Dear ${customer.firstName}, payment received successfully. ${formattedBalanceMessage}. Thank you for your payment!`;
 
 // Step 3: Call sendSMS with the formatted message
+
+console.log(`customer phone number ${customer.phoneNumber}`);
 await sendSMS({
-    mobile: customer.phoneNumber,
+    mobile: customer?.phoneNumber,
     message: message,
 });
 
