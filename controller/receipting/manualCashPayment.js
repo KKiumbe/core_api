@@ -1,8 +1,5 @@
-
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-
-
 
 function generateReceiptNumber() {
     const randomDigits = Math.floor(10000 + Math.random() * 90000); // Generates a number between 10000 and 99999
@@ -27,58 +24,88 @@ const manualCashPayment = async (req, res) => {
             return res.status(404).json({ message: 'Customer not found.' });
         }
 
-        // Step 2: Create or update the payment
-        let updatedPayment;
-        if (paymentId) {
-            // If paymentId is provided, update the existing payment
-            updatedPayment = await prisma.payment.update({
-                where: { id: paymentId },
-                data: {
-                    amount: totalAmount,
-                    modeOfPayment: modeOfPayment,
-                    receipted: true,
-                    createdAt: new Date(),
-                },
-            });
-        } else {
-            // If no paymentId is provided, create a new payment
-            updatedPayment = await prisma.payment.create({
-                data: {
-                    amount: totalAmount,
-                    modeOfPayment: modeOfPayment,
-                    receipted: true,
-                    createdAt: new Date(),
-                },
-            });
-        }
-
-        // Generate a unique receipt number
-        const receiptNumber = generateReceiptNumber();
-
-        // Step 3: Create the receipt
-        const receipt = await prisma.receipt.create({
-            data: {
-                customerId: customerId,
-                amount: totalAmount,
-                modeOfPayment: modeOfPayment,
-                receiptNumber: receiptNumber,
-                paymentId: updatedPayment.id, // Link the newly created/updated payment
-                paidBy: paidBy,
-                createdAt: new Date(),
-            },
+        // Step 2: Get unpaid invoices for the customer
+        const invoices = await prisma.invoice.findMany({
+            where: { customerId: customerId, status: 'UNPAID' },
+            orderBy: { createdAt: 'asc' }, // Pay older invoices first
         });
 
+        // Initialize variables for payment processing
+        let remainingAmount = totalAmount;
+        const receipts = []; // Store created receipts for each invoice
+        const updatedInvoices = []; // Track updated invoices
+
+        // Step 3: Allocate payment to invoices
+        for (const invoice of invoices) {
+            if (remainingAmount <= 0) break;
+
+            const invoiceDue = invoice.invoiceAmount - invoice.amountPaid;
+            const paymentForInvoice = Math.min(remainingAmount, invoiceDue);
+
+            // Update invoice with the paid amount
+            const updatedInvoice = await prisma.invoice.update({
+                where: { id: invoice.id },
+                data: {
+                    amountPaid: invoice.amountPaid + paymentForInvoice,
+                    status: invoice.amountPaid + paymentForInvoice >= invoice.invoiceAmount ? 'PAID' : 'UNPAID',
+                },
+            });
+            updatedInvoices.push(updatedInvoice);
+
+            // Generate a unique receipt number
+            const receiptNumber = generateReceiptNumber();
+
+            // Create a receipt for this payment
+            const receipt = await prisma.receipt.create({
+                data: {
+                    customerId: customerId,
+                    amount: paymentForInvoice,
+                    modeOfPayment: modeOfPayment,
+                    receiptNumber: receiptNumber,
+                    paymentId: paymentId || null,
+                    paidBy: paidBy,
+                    createdAt: new Date(),
+                    receiptInvoices: {
+                        create: { invoiceId: invoice.id },
+                    },
+                },
+            });
+            receipts.push(receipt);
+
+            remainingAmount -= paymentForInvoice;
+        }
+
+        // Step 4: Handle overpayment
+        let newClosingBalance = customer.closingBalance;
+        if (remainingAmount > 0) {
+            newClosingBalance -= remainingAmount; // Deduct overpayment from closing balance
+
+            // Generate a receipt for the overpayment
+            const receiptNumber = generateReceiptNumber();
+            const overpaymentReceipt = await prisma.receipt.create({
+                data: {
+                    customerId: customerId,
+                    amount: remainingAmount,
+                    modeOfPayment: modeOfPayment,
+                    receiptNumber: receiptNumber,
+                    paymentId: paymentId || null,
+                    paidBy: paidBy,
+                    createdAt: new Date(),
+                },
+            });
+            receipts.push(overpaymentReceipt);
+        }
+
         // Update the customer's closing balance
-        const newClosingBalance = customer.closingBalance - totalAmount;
         await prisma.customer.update({
             where: { id: customerId },
             data: { closingBalance: newClosingBalance },
         });
 
-        return res.status(201).json({
-            message: 'Payment and receipt created successfully.',
-            receipt,
-            updatedPayment,
+        res.status(201).json({
+            message: 'Manual cash payment processed successfully.',
+            receipts,
+            updatedInvoices,
             newClosingBalance,
         });
     } catch (error) {
@@ -87,7 +114,4 @@ const manualCashPayment = async (req, res) => {
     }
 };
 
-
-module.exports ={
-    manualCashPayment
-}
+module.exports = { manualCashPayment };
