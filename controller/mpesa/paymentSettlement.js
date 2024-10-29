@@ -158,8 +158,7 @@ function sanitizePhoneNumber(phone) {
 
 const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber)
 await sendSMS({
-    mobile: sanitisedNumber,
-    message: message,
+   sanitisedNumber, message
 });
 
 
