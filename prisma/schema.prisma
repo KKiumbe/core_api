@@ -141,7 +141,7 @@ model Payment {
 
   // One-to-one relationship with Receipt
   receipt                 Receipt?    
-  receiptId               String?     @db.ObjectId @unique
+  receiptId               String?     @db.ObjectId
 
   // Capture when the payment was created
   createdAt               DateTime    @default(now()) // Automatically set when created
