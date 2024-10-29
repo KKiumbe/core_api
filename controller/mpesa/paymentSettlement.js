@@ -157,9 +157,9 @@ function sanitizePhoneNumber(phone) {
 }
 
 const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber)
-await sendSMS({
+await sendSMS(
    sanitisedNumber,message
-});
+);
 
 
 
