@@ -154,7 +154,7 @@ model MpesaTransaction {
   TransID         String      
   TransTime       DateTime    
   TransAmount     Float       
-  BillRefNumber   String?   
+  BillRefNumber   String  
   MSISDN          String      
   FirstName       String      
   processed       Boolean     @default(false) 
