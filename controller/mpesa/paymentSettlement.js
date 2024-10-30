@@ -40,8 +40,18 @@ async function settleInvoice() {
 
             if (!customer) {
                 console.log(`No customer found with BillRefNumber ${BillRefNumber}.`);
-                await createPaymentRecord(transaction, paymentAmount, FirstName, phone, MpesaCode, null);
-                continue;
+
+                const payment = await prisma.payment.create({
+                    data: {
+                        amount: paymentAmount,
+                        modeOfPayment: 'MPESA',
+                        mpesaTransactionId: MpesaCode,
+                        receipted: true,
+                        createdAt: TransTime,
+                        receiptId: null,
+                    },
+                });
+                
             }
 
             const payment = await prisma.payment.create({
@@ -49,7 +59,7 @@ async function settleInvoice() {
                     amount: paymentAmount,
                     modeOfPayment: 'MPESA',
                     mpesaTransactionId: MpesaCode,
-                    receipted: true,
+                    receipted: false,
                     createdAt: TransTime,
                     receiptId: null,
                 },
@@ -95,7 +105,7 @@ async function settleInvoice() {
 
             // Construct and send the SMS message
             // After invoice settlement and balance adjustment
-            const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. ${formattedBalanceMessage}. Thank you for your payment!`;
+           const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. ${formattedBalanceMessage}. Thank you for your payment!`;
 
             const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber);
 
