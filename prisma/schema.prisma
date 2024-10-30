@@ -137,7 +137,7 @@ model Payment {
   amount                  Float
   modeOfPayment           ModeOfPayment
   receipted               Boolean     @default(false)
-  mpesaTransactionId      String?     @unique
+  TransactionId      String?     @unique
 
   // One-to-one relationship with Receipt
   receipt                 Receipt?    

@@ -33,7 +33,7 @@ const MpesaPaymentSettlement = async (req, res) => {
 
             // Check if this transaction has already been receipted
             const existingPayment = await prisma.payment.findFirst({
-                where: { mpesaTransactionId: generatedMpesaTransactionId, receipted: true },
+                where: { TransactionId: generatedMpesaTransactionId, receipted: true },
             });
             if (existingPayment) {
                 return res.status(400).json({ message: 'Payment with this MPESA transaction ID has already been receipted.' });
@@ -45,7 +45,7 @@ const MpesaPaymentSettlement = async (req, res) => {
                     customerId,
                     amount: totalAmount,
                     modeOfPayment,
-                    mpesaTransactionId: generatedMpesaTransactionId,
+                    TransactionId: generatedMpesaTransactionId,
                     receipted: true,
                     createdAt: new Date(),
                 },
