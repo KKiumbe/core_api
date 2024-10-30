@@ -8,7 +8,7 @@ function generateReceiptNumber() {
 }
 
 const manualCashPayment = async (req, res) => {
-    const { customerId, totalAmount, modeOfPayment, paidBy } = req.body;
+    const { customerId, totalAmount, modeOfPayment, paidBy, mpesaTransactionId } = req.body;
 
     // Validate required fields
     if (!customerId || !totalAmount || !modeOfPayment || !paidBy) {
@@ -26,16 +26,27 @@ const manualCashPayment = async (req, res) => {
             return res.status(404).json({ message: 'Customer not found.' });
         }
 
-        // Step 2: Create a payment record
+        // Step 2: Check if the mpesaTransactionId already exists
+        if (mpesaTransactionId) {
+            const existingPayment = await prisma.payment.findUnique({
+                where: { mpesaTransactionId: mpesaTransactionId },
+            });
+            if (existingPayment) {
+                return res.status(400).json({ message: 'Payment with this MPESA transaction ID already exists.' });
+            }
+        }
+
+        // Step 3: Create a payment record
         const payment = await prisma.payment.create({
             data: {
                 amount: totalAmount,
                 modeOfPayment: modeOfPayment,
+                mpesaTransactionId: mpesaTransactionId || null, // Only include if provided
                 createdAt: new Date(),
             },
         });
 
-        // Step 3: Get unpaid invoices for the customer
+        // Step 4: Get unpaid invoices for the customer
         const invoices = await prisma.invoice.findMany({
             where: { customerId: customerId, status: 'UNPAID' },
             orderBy: { createdAt: 'asc' },
@@ -46,7 +57,7 @@ const manualCashPayment = async (req, res) => {
         const receipts = []; // Store created receipts for each invoice
         const updatedInvoices = []; // Track updated invoices
 
-        // Step 4: Allocate payment to invoices
+        // Step 5: Allocate payment to invoices
         for (const invoice of invoices) {
             if (remainingAmount <= 0) break;
 
@@ -83,7 +94,7 @@ const manualCashPayment = async (req, res) => {
             remainingAmount -= paymentForInvoice;
         }
 
-        // Step 5: Handle overpayment
+        // Step 6: Handle overpayment
         let finalClosingBalance = customer.closingBalance;
         if (remainingAmount > 0) {
             finalClosingBalance -= remainingAmount; // Deduct overpayment from closing balance
