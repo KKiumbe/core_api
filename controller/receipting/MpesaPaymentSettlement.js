@@ -8,7 +8,7 @@ function generateReceiptNumber() {
 }
 
 const MpesaPaymentSettlement = async (req, res) => {
-    const { customerId, totalAmount, modeOfPayment, paidBy, mpesaTransactionId } = req.body;
+    const { customerId, totalAmount, modeOfPayment, paidBy, paymentId } = req.body;
 
     if (!customerId || !totalAmount || !modeOfPayment || !paidBy) {
         return res.status(400).json({ message: 'Missing required fields.' });
@@ -29,27 +29,23 @@ const MpesaPaymentSettlement = async (req, res) => {
             }
 
             // Generate or use provided transaction ID
-            const generatedMpesaTransactionId = mpesaTransactionId || `MP${Math.floor(1000000 + Math.random() * 9000000).toString()}`;
+            //const generatedMpesaTransactionId = mpesaTransactionId || `MP${Math.floor(1000000 + Math.random() * 9000000).toString()}`;
 
             // Check if this transaction has already been receipted
-            const existingPayment = await prisma.payment.findFirst({
-                where: { TransactionId: generatedMpesaTransactionId, receipted: true },
+            const PaymentReceipted = await prisma.payment.findFirst({
+                where: { id: paymentId, receipted: true },
             });
-            if (existingPayment) {
+            if (PaymentReceipted.receipted) {
                 return res.status(400).json({ message: 'Payment with this MPESA transaction ID has already been receipted.' });
             }
 
-            // Create the payment record with receipted set to true
-            const payment = await prisma.payment.create({
+            await prisma.payment.update({
+                where: { id: paymentId },
                 data: {
-                   
-                    amount: totalAmount,
-                    modeOfPayment,
-                    TransactionId: generatedMpesaTransactionId,
                     receipted: true,
-                    createdAt: new Date(),
                 },
             });
+            
 
             // Get unpaid invoices for the customer
             const invoices = await prisma.invoice.findMany({
