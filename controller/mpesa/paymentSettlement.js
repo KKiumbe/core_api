@@ -2,8 +2,6 @@ const { PrismaClient } = require('@prisma/client');
 const { sendSMS } = require('../../routes/sms/sms');
 const prisma = new PrismaClient();
 
-
-
 async function generateUniqueReceiptNumber() {
     let receiptNumber;
     let exists = true;
@@ -11,9 +9,8 @@ async function generateUniqueReceiptNumber() {
     while (exists) {
         const randomDigits = Math.floor(10000 + Math.random() * 90000);
         receiptNumber = `RCPT${randomDigits}`;
-
         exists = await prisma.receipt.findUnique({
-            where: { receiptNumber: receiptNumber },
+            where: { receiptNumber },
         }) !== null;
     }
 
@@ -35,8 +32,8 @@ async function settleInvoice() {
             const { BillRefNumber, TransAmount, id, FirstName, MSISDN: phone, TransID: MpesaCode, TransTime } = transaction;
 
             console.log(`Processing transaction: ${id} for amount: ${TransAmount}`);
-
             const paymentAmount = parseFloat(TransAmount);
+
             if (isNaN(paymentAmount) || paymentAmount <= 0) {
                 console.log(`Invalid payment amount for transaction ${id}. Skipping.`);
                 continue;
@@ -58,18 +55,16 @@ async function settleInvoice() {
 
             if (!customer) {
                 console.log(`No customer found with BillRefNumber ${BillRefNumber}.`);
-
-                const payment = await prisma.payment.create({
+                await prisma.payment.create({
                     data: {
                         amount: paymentAmount,
                         modeOfPayment: 'MPESA',
                         mpesaTransactionId: MpesaCode,
                         receipted: true,
                         createdAt: TransTime,
-                        receiptId: null,
                     },
                 });
-                
+                continue;
             }
 
             const payment = await prisma.payment.create({
@@ -98,7 +93,7 @@ async function settleInvoice() {
                     receiptInvoices: {
                         create: receipts,
                     },
-                    receiptNumber: receiptNumber,
+                    receiptNumber,
                     createdAt: new Date(),
                 },
             });
@@ -109,26 +104,19 @@ async function settleInvoice() {
             });
 
             await prisma.mpesaTransaction.update({
-                where: { id: id },
+                where: { id },
                 data: { processed: true },
             });
 
-            // Update customer closing balance for the SMS message
             const finalClosingBalance = newClosingBalance;
-
-            // Format the closing balance message
             const formattedBalanceMessage = finalClosingBalance < 0
                 ? `Your closing balance is an overpayment of KES ${Math.abs(finalClosingBalance)}`
                 : `Your closing balance is KES ${finalClosingBalance}`;
 
-            // Construct and send the SMS message
-            // After invoice settlement and balance adjustment
-           const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. ${formattedBalanceMessage}. Thank you for your payment!`;
-
+            const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. ${formattedBalanceMessage}. Thank you for your payment!`;
             const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber);
 
             await sendSMS(sanitisedNumber, message);
-
             console.log(`Processed payment and created receipt for transaction ${MpesaCode}.`);
         }
     } catch (error) {
@@ -138,7 +126,7 @@ async function settleInvoice() {
 
 async function processInvoices(paymentAmount, customerId, paymentId) {
     const invoices = await prisma.invoice.findMany({
-        where: { customerId: customerId, status: 'UNPAID' },
+        where: { customerId, status: 'UNPAID' },
     });
 
     let remainingAmount = paymentAmount;
