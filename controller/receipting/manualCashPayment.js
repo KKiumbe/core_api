@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { sendSMS } = require('../../routes/sms/sms');
 const prisma = new PrismaClient();
 
 function generateReceiptNumber() {
@@ -18,6 +19,7 @@ const manualCashPayment = async (req, res) => {
         // Step 1: Retrieve the customer
         const customer = await prisma.customer.findUnique({
             where: { id: customerId },
+            select: { id: true, closingBalance: true, phoneNumber: true, firstName: true },
         });
 
         if (!customer) {
@@ -32,8 +34,8 @@ const manualCashPayment = async (req, res) => {
 
         // Initialize variables for payment processing
         let remainingAmount = totalAmount;
-        const receipts = []; // Store created receipts for each invoice
-        const updatedInvoices = []; // Track updated invoices
+        const receipts = [];
+        const updatedInvoices = [];
 
         // Step 3: Allocate payment to invoices
         for (const invoice of invoices) {
@@ -42,7 +44,6 @@ const manualCashPayment = async (req, res) => {
             const invoiceDue = invoice.invoiceAmount - invoice.amountPaid;
             const paymentForInvoice = Math.min(remainingAmount, invoiceDue);
 
-            // Update invoice with the paid amount
             const updatedInvoice = await prisma.invoice.update({
                 where: { id: invoice.id },
                 data: {
@@ -52,10 +53,8 @@ const manualCashPayment = async (req, res) => {
             });
             updatedInvoices.push(updatedInvoice);
 
-            // Generate a unique receipt number
             const receiptNumber = generateReceiptNumber();
 
-            // Create a receipt for this payment
             const receipt = await prisma.receipt.create({
                 data: {
                     customerId: customerId,
@@ -76,11 +75,10 @@ const manualCashPayment = async (req, res) => {
         }
 
         // Step 4: Handle overpayment
-        let newClosingBalance = customer.closingBalance;
+        let finalClosingBalance = customer.closingBalance;
         if (remainingAmount > 0) {
-            newClosingBalance -= remainingAmount; // Deduct overpayment from closing balance
+            finalClosingBalance -= remainingAmount;
 
-            // Generate a receipt for the overpayment
             const receiptNumber = generateReceiptNumber();
             const overpaymentReceipt = await prisma.receipt.create({
                 data: {
@@ -99,19 +97,49 @@ const manualCashPayment = async (req, res) => {
         // Update the customer's closing balance
         await prisma.customer.update({
             where: { id: customerId },
-            data: { closingBalance: newClosingBalance },
+            data: { closingBalance: finalClosingBalance },
         });
 
         res.status(201).json({
             message: 'Manual cash payment processed successfully.',
             receipts,
             updatedInvoices,
-            newClosingBalance,
+            newClosingBalance: finalClosingBalance,
         });
+
+        // Construct the SMS message
+        const formattedBalanceMessage = finalClosingBalance < 0
+            ? `Your closing balance is an overpayment of KES ${Math.abs(finalClosingBalance)}`
+            : `Your closing balance is KES ${finalClosingBalance}`;
+
+        const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ${formattedBalanceMessage}. Thank you for your payment!`;
+
+        const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber);
+        await sendSMS(sanitisedNumber, message);
+
     } catch (error) {
         console.error('Error creating manual cash payment:', error);
         res.status(500).json({ error: 'Failed to create manual cash payment.', details: error.message });
     }
 };
+
+
+
+function sanitizePhoneNumber(phone) {
+    if (typeof phone !== 'string') {
+        console.error('Invalid phone number format:', phone);
+        return '';
+    }
+
+    if (phone.startsWith('+254')) {
+        return phone.slice(1);
+    } else if (phone.startsWith('0')) {
+        return `254${phone.slice(1)}`;
+    } else if (phone.startsWith('254')) {
+        return phone;
+    } else {
+        return `254${phone}`;
+    }
+}
 
 module.exports = { manualCashPayment };
