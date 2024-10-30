@@ -26,27 +26,29 @@ const manualCashPayment = async (req, res) => {
             return res.status(404).json({ message: 'Customer not found.' });
         }
 
-        // Step 2: Check if the mpesaTransactionId already exists
-        if (mpesaTransactionId) {
-            const existingPayment = await prisma.payment.findUnique({
-                where: { mpesaTransactionId: mpesaTransactionId },
-            });
-            if (existingPayment) {
-                return res.status(400).json({ message: 'Payment with this MPESA transaction ID already exists.' });
-            }
+        // Step 2: Generate mpesaTransactionId if not provided
+        const generatedMpesaTransactionId = mpesaTransactionId || `CH${Math.floor(1000000 + Math.random() * 9000000).toString()}`;
+
+        // Step 3: Check if the mpesaTransactionId already exists
+        const existingPayment = await prisma.payment.findUnique({
+            where: { mpesaTransactionId: generatedMpesaTransactionId },
+        });
+        if (existingPayment) {
+            return res.status(400).json({ message: 'Payment with this MPESA transaction ID already exists.' });
         }
 
-        // Step 3: Create a payment record
+        // Step 4: Create a payment record with receipted set to true
         const payment = await prisma.payment.create({
             data: {
                 amount: totalAmount,
                 modeOfPayment: modeOfPayment,
-                mpesaTransactionId: mpesaTransactionId || null, // Only include if provided
+                mpesaTransactionId: generatedMpesaTransactionId, // Use the generated ID
+                receipted: true, // Set receipted to true
                 createdAt: new Date(),
             },
         });
 
-        // Step 4: Get unpaid invoices for the customer
+        // Step 5: Get unpaid invoices for the customer
         const invoices = await prisma.invoice.findMany({
             where: { customerId: customerId, status: 'UNPAID' },
             orderBy: { createdAt: 'asc' },
@@ -57,7 +59,7 @@ const manualCashPayment = async (req, res) => {
         const receipts = []; // Store created receipts for each invoice
         const updatedInvoices = []; // Track updated invoices
 
-        // Step 5: Allocate payment to invoices
+        // Step 6: Allocate payment to invoices
         for (const invoice of invoices) {
             if (remainingAmount <= 0) break;
 
@@ -84,7 +86,7 @@ const manualCashPayment = async (req, res) => {
                     amount: paymentForInvoice,
                     modeOfPayment: modeOfPayment,
                     receiptNumber: receiptNumber,
-                    paymentId: payment.id, // Link to the created payment
+                    paymentId: payment.id, // Associate with the created payment
                     paidBy: paidBy,
                     createdAt: new Date(),
                 },
@@ -94,7 +96,7 @@ const manualCashPayment = async (req, res) => {
             remainingAmount -= paymentForInvoice;
         }
 
-        // Step 6: Handle overpayment
+        // Step 7: Handle overpayment
         let finalClosingBalance = customer.closingBalance;
         if (remainingAmount > 0) {
             finalClosingBalance -= remainingAmount; // Deduct overpayment from closing balance
@@ -107,7 +109,7 @@ const manualCashPayment = async (req, res) => {
                     amount: remainingAmount,
                     modeOfPayment: modeOfPayment,
                     receiptNumber: overpaymentReceiptNumber,
-                    paymentId: payment.id, // Link to the created payment
+                    paymentId: payment.id,  // Associate with the same payment
                     paidBy: paidBy,
                     createdAt: new Date(),
                 },
@@ -142,6 +144,7 @@ const manualCashPayment = async (req, res) => {
         res.status(500).json({ error: 'Failed to create manual cash payment.', details: error.message });
     }
 };
+
 
 function sanitizePhoneNumber(phone) {
     if (typeof phone !== 'string') {
