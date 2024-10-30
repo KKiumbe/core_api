@@ -60,7 +60,7 @@ async function settleInvoice() {
                         amount: paymentAmount,
                         modeOfPayment: 'MPESA',
                         TransactionId: MpesaCode,
-                        receipted: true,
+                        receipted: false,
                         createdAt: TransTime,
                     },
                 });
