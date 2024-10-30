@@ -42,7 +42,7 @@ const MpesaPaymentSettlement = async (req, res) => {
             // Create the payment record with receipted set to true
             const payment = await prisma.payment.create({
                 data: {
-                    customerId,
+                   
                     amount: totalAmount,
                     modeOfPayment,
                     TransactionId: generatedMpesaTransactionId,
