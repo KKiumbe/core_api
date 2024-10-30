@@ -40,7 +40,7 @@ async function settleInvoice() {
             }
 
             const existingPayment = await prisma.payment.findUnique({
-                where: { mpesaTransactionId: MpesaCode },
+                where: { TransactionId: MpesaCode },
             });
 
             if (existingPayment) {
@@ -59,7 +59,7 @@ async function settleInvoice() {
                     data: {
                         amount: paymentAmount,
                         modeOfPayment: 'MPESA',
-                        mpesaTransactionId: MpesaCode,
+                        TransactionId: MpesaCode,
                         receipted: true,
                         createdAt: TransTime,
                     },
@@ -71,7 +71,7 @@ async function settleInvoice() {
                 data: {
                     amount: paymentAmount,
                     modeOfPayment: 'MPESA',
-                    mpesaTransactionId: MpesaCode,
+                    TransactionId: MpesaCode,
                     receipted: false,
                     createdAt: TransTime,
                     receiptId: null,
