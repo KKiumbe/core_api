@@ -125,6 +125,7 @@ async function settleInvoice() {
 }
 
 async function processInvoices(paymentAmount, customerId, paymentId) {
+    // Fetch unpaid invoices
     const invoices = await prisma.invoice.findMany({
         where: { customerId, status: 'UNPAID' },
     });
@@ -138,7 +139,25 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
         data: { receipted: true },
     });
 
-    // Apply payment across unpaid invoices
+    // Scenario: No unpaid invoices
+    if (invoices.length === 0) {
+        const customer = await prisma.customer.findUnique({
+            where: { id: customerId },
+            select: { closingBalance: true },
+        });
+
+        const newClosingBalance = customer.closingBalance - paymentAmount;
+
+        // Update the customer's closing balance directly
+        await prisma.customer.update({
+            where: { id: customerId },
+            data: { closingBalance: newClosingBalance },
+        });
+
+        return { receipts, remainingAmount: 0, newClosingBalance };
+    }
+
+    // Apply payment across unpaid invoices if any exist
     for (const invoice of invoices) {
         if (remainingAmount <= 0) break;
 
@@ -158,16 +177,16 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
         totalPaidAmount += paymentForInvoice;
     }
 
-    // Fetch current customer closing balance
+    // Fetch customer’s updated closing balance after processing invoices
     const customer = await prisma.customer.findUnique({
         where: { id: customerId },
         select: { closingBalance: true },
     });
 
-    // Calculate new closing balance: reduce debt by total payment amount, add overpayment if any remaining
+    // Calculate new closing balance
     const newClosingBalance = remainingAmount > 0
         ? customer.closingBalance - totalPaidAmount + remainingAmount // Apply overpayment if any
-        : customer.closingBalance - totalPaidAmount; // Regular payment deduction from debt
+        : customer.closingBalance - totalPaidAmount;
 
     // Update customer's closing balance
     await prisma.customer.update({
