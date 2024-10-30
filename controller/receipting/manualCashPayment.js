@@ -1,12 +1,3 @@
-const { PrismaClient } = require('@prisma/client');
-const { sendSMS } = require('../../routes/sms/sms');
-const prisma = new PrismaClient();
-
-function generateReceiptNumber() {
-    const randomDigits = Math.floor(10000 + Math.random() * 90000);
-    return `RCPT${randomDigits}`;
-}
-
 const manualCashPayment = async (req, res) => {
     const { customerId, totalAmount, modeOfPayment, paidBy, paymentId } = req.body;
 
@@ -49,7 +40,7 @@ const manualCashPayment = async (req, res) => {
                 where: { id: invoice.id },
                 data: {
                     amountPaid: invoice.amountPaid + paymentForInvoice,
-                    status: invoice.amountPaid + paymentForInvoice >= invoice.invoiceAmount ? 'PAID' : 'UNPAID',
+                    status: paymentForInvoice + invoice.amountPaid >= invoice.invoiceAmount ? 'PAID' : 'UNPAID',
                 },
             });
             updatedInvoices.push(updatedInvoice);
@@ -64,7 +55,7 @@ const manualCashPayment = async (req, res) => {
                     amount: paymentForInvoice,
                     modeOfPayment: modeOfPayment,
                     receiptNumber: receiptNumber,
-                    paymentId: paymentId || null,
+                    paymentId: paymentId, // Associate with the same payment
                     paidBy: paidBy,
                     createdAt: new Date(),
                 },
@@ -87,7 +78,7 @@ const manualCashPayment = async (req, res) => {
                     amount: remainingAmount,
                     modeOfPayment: modeOfPayment,
                     receiptNumber: overpaymentReceiptNumber,
-                    paymentId: paymentId || null,  // Associate with the same payment
+                    paymentId: null, // Set paymentId to null for overpayment receipt
                     paidBy: paidBy,
                     createdAt: new Date(),
                 },
@@ -122,22 +113,3 @@ const manualCashPayment = async (req, res) => {
         res.status(500).json({ error: 'Failed to create manual cash payment.', details: error.message });
     }
 };
-
-function sanitizePhoneNumber(phone) {
-    if (typeof phone !== 'string') {
-        console.error('Invalid phone number format:', phone);
-        return '';
-    }
-
-    if (phone.startsWith('+254')) {
-        return phone.slice(1);
-    } else if (phone.startsWith('0')) {
-        return `254${phone.slice(1)}`;
-    } else if (phone.startsWith('254')) {
-        return phone;
-    } else {
-        return `254${phone}`;
-    }
-}
-
-module.exports = { manualCashPayment };
