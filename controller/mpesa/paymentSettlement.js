@@ -138,6 +138,7 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
         data: { receipted: true },
     });
 
+    // Apply payment across unpaid invoices
     for (const invoice of invoices) {
         if (remainingAmount <= 0) break;
 
@@ -157,15 +158,18 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
         totalPaidAmount += paymentForInvoice;
     }
 
+    // Fetch current customer closing balance
     const customer = await prisma.customer.findUnique({
         where: { id: customerId },
         select: { closingBalance: true },
     });
 
+    // Calculate new closing balance: reduce debt by total payment amount, add overpayment if any remaining
     const newClosingBalance = remainingAmount > 0
-        ? customer.closingBalance + remainingAmount
-        : customer.closingBalance - totalPaidAmount;
+        ? customer.closingBalance - totalPaidAmount + remainingAmount // Apply overpayment if any
+        : customer.closingBalance - totalPaidAmount; // Regular payment deduction from debt
 
+    // Update customer's closing balance
     await prisma.customer.update({
         where: { id: customerId },
         data: { closingBalance: newClosingBalance },
@@ -173,6 +177,7 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
 
     return { receipts, remainingAmount, newClosingBalance };
 }
+
 
 function sanitizePhoneNumber(phone) {
     if (typeof phone !== 'string') {
