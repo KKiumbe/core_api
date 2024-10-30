@@ -2,6 +2,24 @@ const { PrismaClient } = require('@prisma/client');
 const { sendSMS } = require('../../routes/sms/sms');
 const prisma = new PrismaClient();
 
+
+
+async function generateUniqueReceiptNumber() {
+    let receiptNumber;
+    let exists = true;
+
+    while (exists) {
+        const randomDigits = Math.floor(10000 + Math.random() * 90000);
+        receiptNumber = `RCPT${randomDigits}`;
+
+        exists = await prisma.receipt.findUnique({
+            where: { receiptNumber: receiptNumber },
+        }) !== null;
+    }
+
+    return receiptNumber;
+}
+
 async function settleInvoice() {
     try {
         const mpesaTransactions = await prisma.mpesaTransaction.findMany({
