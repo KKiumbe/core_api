@@ -29,7 +29,6 @@ const manualCashPayment = async (req, res) => {
 
         // Generate a unique TransactionId
         const transactionId = generateTransactionId();
-
         const newClosingBalance = customer.closingBalance - totalAmount;
 
         let updatedPayment;
@@ -96,23 +95,37 @@ const manualCashPayment = async (req, res) => {
             remainingAmount -= paymentForInvoice;
         }
 
-        // Step 3: Handle overpayment
+        // Step 3: Handle any remaining amount as an overpayment
         if (remainingAmount > 0) {
+            // Create a new payment record for the overpayment
+            const overpaymentTransactionId = generateTransactionId();
+            const overpaymentPayment = await prisma.payment.create({
+                data: {
+                    amount: remainingAmount,
+                    modeOfPayment: modeOfPayment,
+                    TransactionId: overpaymentTransactionId,
+                    receipted: true,
+                    createdAt: new Date(),
+                },
+            });
+
+            // Create a receipt for the overpayment
             const overpaymentReceipt = await prisma.receipt.create({
                 data: {
                     customerId: customerId,
                     amount: remainingAmount,
                     modeOfPayment: modeOfPayment,
                     receiptNumber: generateReceiptNumber(),
-                    paymentId: updatedPayment.id,  // Associate with the same payment
+                    paymentId: overpaymentPayment.id,  // Associate with the new overpayment
                     paidBy: paidBy,
                     createdAt: new Date(),
                 },
             });
 
+            // Update the customer's closing balance to reflect the overpayment
             await prisma.customer.update({
                 where: { id: customerId },
-                data: { closingBalance: customer.closingBalance - remainingAmount },
+                data: { closingBalance: newClosingBalance }, // Just reflect the new closing balance without deducting again
             });
 
             return res.status(201).json({
@@ -120,7 +133,7 @@ const manualCashPayment = async (req, res) => {
                 receipt,
                 overpaymentReceipt,
                 updatedInvoices,
-                newClosingBalance: customer.closingBalance - remainingAmount,
+                newClosingBalance: newClosingBalance, // Show the new closing balance including the overpayment
             });
         } else {
             // Update the customer's closing balance
@@ -134,7 +147,7 @@ const manualCashPayment = async (req, res) => {
                 receipt,
                 updatedPayment,
                 updatedInvoices,
-                newClosingBalance,
+                newClosingBalance: newClosingBalance,
             });
         }
     } catch (error) {
