@@ -47,32 +47,49 @@ async function generateInvoices() {
         const currentClosingBalance = await getCurrentClosingBalance(customer.id);
         const currentMonthBill = await getCurrentMonthBill(customer.id);
         const invoiceAmount = currentMonthBill;
-        const newClosingBalance = currentClosingBalance + invoiceAmount;
 
+        // Determine the status of the invoice based on the closing balance
+        let status;
+        if (currentClosingBalance > 0) {
+          // Scenario 1: UNPAID
+          status = 'UNPAID';
+        } else if (Math.abs(currentClosingBalance) < invoiceAmount) {
+          // Scenario 2: PPAID (Partially Paid)
+          status = 'PPAID';
+        } else {
+          // Scenario 3: PAID
+          status = 'PAID';
+        }
+
+        // Create the new invoice
         const newInvoice = await prisma.invoice.create({
           data: {
             customerId: customer.id,
             invoiceNumber,
             invoicePeriod,
-            closingBalance: newClosingBalance,
+            closingBalance: currentClosingBalance + invoiceAmount, // Update closing balance
             invoiceAmount,
-            status: 'UNPAID',
+            status, // Set status based on the determined condition
             isSystemGenerated: true,
           },
         });
 
-        await prisma.invoiceItem.create({
-          data: {
-            invoiceId: newInvoice.id,
-            description: 'Monthly Charge',
-            amount: currentMonthBill,
-            quantity: 1,
-          },
-        });
+        // Create invoice item only if invoice amount is greater than zero
+        if (invoiceAmount > 0) {
+          await prisma.invoiceItem.create({
+            data: {
+              invoiceId: newInvoice.id,
+              description: 'Monthly Charge',
+              amount: invoiceAmount,
+              quantity: 1,
+            },
+          });
+        }
 
+        // Update the customer’s closing balance
         await prisma.customer.update({
           where: { id: customer.id },
-          data: { closingBalance: newClosingBalance },
+          data: { closingBalance: currentClosingBalance + invoiceAmount },
         });
 
         return newInvoice;
@@ -87,7 +104,9 @@ async function generateInvoices() {
   }
 }
 
+
 // Create a manual invoice for a customer
+
 async function createInvoice(req, res) {
   const { customerId, invoiceItemsData } = req.body;
 
@@ -98,7 +117,9 @@ async function createInvoice(req, res) {
     const currentMonth = new Date().getMonth() + 1;
     const invoicePeriod = new Date(new Date().getFullYear(), currentMonth - 1, 1);
     const currentClosingBalance = await getCurrentClosingBalance(customer.id) || 0;
-    const invoiceAmount = customer.monthlyCharge;
+
+    // Calculate the total invoice amount from invoiceItemsData
+    const invoiceAmount = invoiceItemsData.reduce((total, item) => total + item.amount * item.quantity, 0);
 
     if (!invoiceAmount || invoiceAmount <= 0) {
       return res.status(400).json({ error: 'Invalid invoice amount' });
@@ -107,6 +128,16 @@ async function createInvoice(req, res) {
     const newClosingBalance = currentClosingBalance + invoiceAmount;
     const invoiceNumber = generateInvoiceNumber(customerId);
 
+    // Determine the invoice status based on the closing balance
+    let invoiceStatus;
+    if (newClosingBalance > 0) {
+      invoiceStatus = 'UNPAID';
+    } else if (Math.abs(newClosingBalance) < invoiceAmount) {
+      invoiceStatus = 'PPAID'; // Partially Paid
+    } else {
+      invoiceStatus = 'PAID'; // Fully Paid
+    }
+
     const newInvoice = await prisma.invoice.create({
       data: {
         customerId,
@@ -114,7 +145,7 @@ async function createInvoice(req, res) {
         invoicePeriod,
         closingBalance: newClosingBalance,
         invoiceAmount,
-        status: 'UNPAID',
+        status: invoiceStatus,
         isSystemGenerated: false,
       },
     });
@@ -125,8 +156,8 @@ async function createInvoice(req, res) {
           data: {
             invoiceId: newInvoice.id,
             description: itemData.description,
-            amount: invoiceAmount,
-            quantity: 1,
+            amount: itemData.amount,
+            quantity: itemData.quantity,
           },
         })
       )
@@ -143,6 +174,7 @@ async function createInvoice(req, res) {
     res.status(500).json({ error: 'Internal server error' });
   }
 }
+
 
 // Cancel an invoice by ID
 async function cancelInvoice(invoiceId) {
