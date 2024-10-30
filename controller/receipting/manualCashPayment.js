@@ -3,8 +3,8 @@ const { sendSMS } = require('../../routes/sms/sms');
 const prisma = new PrismaClient();
 
 function generateReceiptNumber() {
-    const randomDigits = Math.floor(10000 + Math.random() * 90000); // Generates a number between 10000 and 99999
-    return `RCPT${randomDigits}`; // Prefix with "RCPT"
+    const randomDigits = Math.floor(10000 + Math.random() * 90000);
+    return `RCPT${randomDigits}`;
 }
 
 const manualCashPayment = async (req, res) => {
@@ -29,13 +29,13 @@ const manualCashPayment = async (req, res) => {
         // Step 2: Get unpaid invoices for the customer
         const invoices = await prisma.invoice.findMany({
             where: { customerId: customerId, status: 'UNPAID' },
-            orderBy: { createdAt: 'asc' }, // Pay older invoices first
+            orderBy: { createdAt: 'asc' },
         });
 
         // Initialize variables for payment processing
         let remainingAmount = totalAmount;
-        const receipts = [];
-        const updatedInvoices = [];
+        const receipts = []; // Store created receipts for each invoice
+        const updatedInvoices = []; // Track updated invoices
 
         // Step 3: Allocate payment to invoices
         for (const invoice of invoices) {
@@ -44,6 +44,7 @@ const manualCashPayment = async (req, res) => {
             const invoiceDue = invoice.invoiceAmount - invoice.amountPaid;
             const paymentForInvoice = Math.min(remainingAmount, invoiceDue);
 
+            // Update invoice with the paid amount
             const updatedInvoice = await prisma.invoice.update({
                 where: { id: invoice.id },
                 data: {
@@ -53,8 +54,10 @@ const manualCashPayment = async (req, res) => {
             });
             updatedInvoices.push(updatedInvoice);
 
+            // Generate a unique receipt number
             const receiptNumber = generateReceiptNumber();
 
+            // Create a receipt for this payment
             const receipt = await prisma.receipt.create({
                 data: {
                     customerId: customerId,
@@ -64,9 +67,6 @@ const manualCashPayment = async (req, res) => {
                     paymentId: paymentId || null,
                     paidBy: paidBy,
                     createdAt: new Date(),
-                    receiptInvoices: {
-                        create: { invoiceId: invoice.id },
-                    },
                 },
             });
             receipts.push(receipt);
@@ -77,16 +77,17 @@ const manualCashPayment = async (req, res) => {
         // Step 4: Handle overpayment
         let finalClosingBalance = customer.closingBalance;
         if (remainingAmount > 0) {
-            finalClosingBalance -= remainingAmount;
+            finalClosingBalance -= remainingAmount; // Deduct overpayment from closing balance
 
-            const receiptNumber = generateReceiptNumber();
+            // Generate a unique receipt number for the overpayment
+            const overpaymentReceiptNumber = generateReceiptNumber();
             const overpaymentReceipt = await prisma.receipt.create({
                 data: {
                     customerId: customerId,
                     amount: remainingAmount,
                     modeOfPayment: modeOfPayment,
-                    receiptNumber: receiptNumber,
-                    paymentId: paymentId || null,
+                    receiptNumber: overpaymentReceiptNumber,
+                    paymentId: paymentId || null,  // Associate with the same payment
                     paidBy: paidBy,
                     createdAt: new Date(),
                 },
@@ -113,7 +114,6 @@ const manualCashPayment = async (req, res) => {
             : `Your closing balance is KES ${finalClosingBalance}`;
 
         const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ${formattedBalanceMessage}. Thank you for your payment!`;
-
         const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber);
         await sendSMS(sanitisedNumber, message);
 
@@ -122,8 +122,6 @@ const manualCashPayment = async (req, res) => {
         res.status(500).json({ error: 'Failed to create manual cash payment.', details: error.message });
     }
 };
-
-
 
 function sanitizePhoneNumber(phone) {
     if (typeof phone !== 'string') {

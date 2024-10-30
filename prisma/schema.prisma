@@ -168,6 +168,6 @@ model ReceiptInvoice {
   invoiceId   String      @db.ObjectId
 
   // Relations
-  receipt     Receipt     @relation("InvoiceReceipts", fields: [receiptId], references: [id], onDelete: Cascade)
-  invoice     Invoice     @relation("InvoiceReceipts", fields: [invoiceId], references: [id], onDelete: Cascade)
+  receipt     Receipt?     @relation("InvoiceReceipts", fields: [receiptId], references: [id], onDelete: Cascade)
+  invoice     Invoice?     @relation("InvoiceReceipts", fields: [invoiceId], references: [id], onDelete: Cascade)
 }
