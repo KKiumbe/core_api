@@ -14,12 +14,19 @@ const SMS_ENDPOINT = process.env.SMS_ENDPOINT;
 
 // Function to sanitize the phone number
 const sanitizePhoneNumber = (phone) => {
-    if (phone.startsWith('254')) {
-        return phone; // Already in the correct format
+    if (typeof phone !== 'string') {
+        console.error('Invalid phone number format:', phone);
+        return '';
+    }
+
+    if (phone.startsWith('+254')) {
+        return phone.slice(1);
     } else if (phone.startsWith('0')) {
-        return '254' + phone.slice(1); // Replace leading '0' with '254'
+        return `254${phone.slice(1)}`;
+    } else if (phone.startsWith('254')) {
+        return phone;
     } else {
-        return '254' + phone; // Assume it's a local number without a prefix
+        return `254${phone}`;
     }
 };
 
@@ -85,6 +92,8 @@ router.post('/send-sms', async (req, res) => {
     if (!mobile || !message) {
         return res.status(400).json({ error: 'Mobile number and message are required.' });
     }
+
+
 
     // Sanitize the mobile number
     const sanitizedMobile = sanitizePhoneNumber(mobile);
