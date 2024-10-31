@@ -16,11 +16,11 @@ const getDashboardStats = async (req, res) => {
 
     // Calculate statistics based on the active customer data
     const paidCustomers = activeCustomers.filter(customer => 
-      customer.closingBalance < 0 // Customers whose closing balance is less than zero
+      customer.closingBalance < 0 || customer.closingBalance < customer.monthlyCharge * 0.15 // Customers with negative closing balance or closing balance less than 15% of monthly charge
     ).length;
 
     const unpaidCustomers = activeCustomers.filter(customer => 
-      customer.closingBalance >= customer.monthlyCharge // Customers with closing balance greater than or equal to monthly charge
+      customer.closingBalance >= customer.monthlyCharge * 0.15 // Customers with closing balance greater than or equal to 15% of monthly charge
     ).length;
 
     const lowBalanceCustomers = activeCustomers.filter(customer => 
