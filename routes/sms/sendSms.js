@@ -87,40 +87,42 @@ router.post('/send-to-group', async (req, res) => {
 
 // Send a single Sms
 
+
 router.post('/send-sms', async (req, res) => {
     const { message, mobile } = req.body;
-
-    const sendSMS = async (sanitisedNumber, message) => {
-        console.log(`Sanitised number is ${sanitisedNumber}`);
-        try {
-            const payload = {
-                partnerID: PARTNER_ID,
-                apikey: SMS_API_KEY,
-                mobile: sanitisedNumber,
-                message,
-                shortcode: SHORTCODE,
-            };
-
-            console.log(`This is payload: ${JSON.stringify(payload)}`);
-
-            const response = await axios.post(SMS_ENDPOINT, payload, {
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            console.log(`SMS sent to ${sanitisedNumber}: ${message}`);
-            return response.data;
-        } catch (error) {
-            console.error('Error sending SMS:', error);
-            throw new Error(error.response ? error.response.data : 'Failed to send SMS.');
-        }
-    };
 
     try {
         // Convert mobile to a string if it's not
         const mobileString = String(mobile);
         const sanitisedNumber = sanitizePhoneNumber(mobileString);
+
+        // Define the sendSMS function
+        const sendSMS = async (sanitisedNumber, message) => {
+            console.log(`Sanitised number is ${sanitisedNumber}`);
+            try {
+                const payload = {
+                    partnerID: PARTNER_ID,
+                    apikey: SMS_API_KEY,
+                    mobile: sanitisedNumber,
+                    message,
+                    shortcode: SHORTCODE,
+                };
+
+                console.log(`This is payload: ${JSON.stringify(payload)}`);
+
+                const response = await axios.post(SMS_ENDPOINT, payload, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                console.log(`SMS sent to ${sanitisedNumber}: ${message}`);
+                return response.data;
+            } catch (error) {
+                console.error('Error sending SMS:', error);
+                throw new Error(error.response ? error.response.data : 'Failed to send SMS.');
+            }
+        };
 
         // Send the SMS
         const response = await sendSMS(sanitisedNumber, message);
@@ -138,6 +140,7 @@ router.post('/send-sms', async (req, res) => {
         });
     }
 });
+
 
 
 // Send bills to all active customers
