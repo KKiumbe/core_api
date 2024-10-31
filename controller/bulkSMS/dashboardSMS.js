@@ -1,4 +1,4 @@
-const axios = require('axios'); // Assuming axios is used for making the HTTP requests
+const axios = require('axios');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -38,7 +38,7 @@ const sendBulkSMS = async (customers) => {
                 pass_type: "plain",
                 clientsmsid: Math.floor(Math.random() * 10000),
                 mobile: mobile,
-                message: customer.message, // Use the pre-built message
+                message: customer.message,
                 shortcode: process.env.SHORTCODE,
             };
         });
@@ -64,14 +64,13 @@ const sendBulkSMS = async (customers) => {
 };
 
 // Function to send SMS to unpaid customers
-const sendUnpaidCustomers = async () => {
+const sendUnpaidCustomers = async (req, res) => {
     try {
         const activeCustomers = await prisma.customer.findMany({
             where: { status: 'ACTIVE' },
             select: {
                 phoneNumber: true,
                 firstName: true,
-                lastName: true,
                 closingBalance: true,
                 monthlyCharge: true,
             },
@@ -88,21 +87,24 @@ const sendUnpaidCustomers = async () => {
 
         if (customersWithMessages.length > 0) {
             await sendBulkSMS(customersWithMessages);
+            return res.status(200).json({ message: 'SMS sent to unpaid customers.' });
+        } else {
+            return res.status(404).json({ message: 'No unpaid customers found.' });
         }
     } catch (error) {
         console.error('Error fetching unpaid customers:', error);
+        return res.status(500).json({ message: 'Failed to send SMS to unpaid customers.' });
     }
 };
 
 // Function to send SMS to low balance customers
-const sendLowBalanceCustomers = async () => {
+const sendLowBalanceCustomers = async (req, res) => {
     try {
         const activeCustomers = await prisma.customer.findMany({
             where: { status: 'ACTIVE' },
             select: {
                 phoneNumber: true,
                 firstName: true,
-                lastName: true,
                 closingBalance: true,
                 monthlyCharge: true,
             },
@@ -119,21 +121,24 @@ const sendLowBalanceCustomers = async () => {
 
         if (customersWithMessages.length > 0) {
             await sendBulkSMS(customersWithMessages);
+            return res.status(200).json({ message: 'SMS sent to low balance customers.' });
+        } else {
+            return res.status(404).json({ message: 'No low balance customers found.' });
         }
     } catch (error) {
         console.error('Error fetching low balance customers:', error);
+        return res.status(500).json({ message: 'Failed to send SMS to low balance customers.' });
     }
 };
 
 // Function to send SMS to high balance customers
-const sendHighBalanceCustomers = async () => {
+const sendHighBalanceCustomers = async (req, res) => {
     try {
         const activeCustomers = await prisma.customer.findMany({
             where: { status: 'ACTIVE' },
             select: {
                 phoneNumber: true,
                 firstName: true,
-                lastName: true,
                 closingBalance: true,
                 monthlyCharge: true,
             },
@@ -150,16 +155,18 @@ const sendHighBalanceCustomers = async () => {
 
         if (customersWithMessages.length > 0) {
             await sendBulkSMS(customersWithMessages);
+            return res.status(200).json({ message: 'SMS sent to high balance customers.' });
+        } else {
+            return res.status(404).json({ message: 'No high balance customers found.' });
         }
     } catch (error) {
         console.error('Error fetching high balance customers:', error);
+        return res.status(500).json({ message: 'Failed to send SMS to high balance customers.' });
     }
 };
-
-
 
 module.exports = {
     sendHighBalanceCustomers,
     sendLowBalanceCustomers,
-    sendUnpaidCustomers
+    sendUnpaidCustomers,
 };
