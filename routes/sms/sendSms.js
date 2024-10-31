@@ -1,7 +1,7 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const axios = require('axios');
-const { sendSMS } = require('./sms');
+
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -90,22 +90,53 @@ router.post('/send-to-group', async (req, res) => {
 router.post('/send-sms', async (req, res) => {
     const { message, mobile } = req.body;
 
-    if (!message || !mobile) {
-        return res.status(400).json({ success: false, message: 'Missing message or mobile number.' });
-    }
+    const formattedNumber = sanitizePhoneNumber(mobile);
 
-    const sanitizedNumber = sanitizePhoneNumber(mobile);
+    const sendSMS = async (formattedNumber, message) => {
+        console.log(`Sanitised number is ${formattedNumber}`);
+        try {
+            const payload = {
+                partnerID: PARTNER_ID,
+                apikey: SMS_API_KEY,
+                mobile: formattedNumber,
+                message,
+                shortcode: SHORTCODE,
+            };
+
+            console.log(`This is payload: ${JSON.stringify(payload)}`);
+
+            const response = await axios.post(SMS_ENDPOINT, payload, {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            console.log(`SMS sent to ${sanitisedNumber}: ${message}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error sending SMS:', error);
+            throw new Error(error.response ? error.response.data : 'Failed to send SMS.');
+        }
+    };
 
     try {
-        const result = await sendSMS(sanitizedNumber, message);
-        
-        if (result.success) {
-            res.status(200).json({ success: true, message: 'SMS sent successfully!' });
-        } else {
-            res.status(500).json({ success: false, message: result.error });
-        }
+        // Sanitize phone number (assuming sanitizePhoneNumber is defined somewhere)
+        const sanitisedNumber = sanitizePhoneNumber(mobile);
+
+        // Send the SMS
+        const response = await sendSMS(sanitisedNumber, message);
+
+        // Respond with success
+        res.status(200).json({
+            success: true,
+            message: `SMS sent to ${sanitisedNumber}`,
+            data: response,
+        });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'An unexpected error occurred while sending SMS.' });
+        res.status(500).json({
+            success: false,
+            message: error.message,
+        });
     }
 });
 
