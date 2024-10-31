@@ -15,9 +15,7 @@ const MpesaPaymentSettlement = async (req, res) => {
     }
 
     try {
-        // Step 1: Start transaction to ensure atomicity
         await prisma.$transaction(async (prisma) => {
-
             // Retrieve customer data
             const customer = await prisma.customer.findUnique({
                 where: { id: customerId },
@@ -28,24 +26,26 @@ const MpesaPaymentSettlement = async (req, res) => {
                 return res.status(404).json({ message: 'Customer not found.' });
             }
 
-            // Generate or use provided transaction ID
-            //const generatedMpesaTransactionId = mpesaTransactionId || `MP${Math.floor(1000000 + Math.random() * 9000000).toString()}`;
-
-            // Check if this transaction has already been receipted
-            const PaymentReceipted = await prisma.payment.findFirst({
-                where: { id: paymentId, receipted: true },
+            // Check if payment with the provided ID exists and if it's already receipted
+            const PaymentReceipted = await prisma.payment.findUnique({
+                where: { id: paymentId },
             });
-            if (PaymentReceipted.receipted) {
-                return res.status(400).json({ message: 'Payment with this MPESA transaction ID has already been receipted.' });
+            
+            if (!PaymentReceipted) {
+                return res.status(404).json({ message: 'Payment not found.' });
             }
 
+            if (PaymentReceipted.receipted) {
+                return res.status(400).json({ message: 'Payment with this ID has already been receipted.' });
+            }
+
+            // Mark the payment as receipted
             await prisma.payment.update({
                 where: { id: paymentId },
                 data: {
                     receipted: true,
                 },
             });
-            
 
             // Get unpaid invoices for the customer
             const invoices = await prisma.invoice.findMany({
@@ -80,7 +80,7 @@ const MpesaPaymentSettlement = async (req, res) => {
                         amount: paymentForInvoice,
                         modeOfPayment,
                         receiptNumber,
-                        paymentId: payment.id,
+                        paymentId: paymentId,
                         paidBy,
                         createdAt: new Date(),
                     },
@@ -101,7 +101,7 @@ const MpesaPaymentSettlement = async (req, res) => {
                         amount: remainingAmount,
                         modeOfPayment,
                         receiptNumber: overpaymentReceiptNumber,
-                        paymentId: payment.id,
+                        paymentId: paymentId,
                         paidBy,
                         createdAt: new Date(),
                     },
@@ -116,7 +116,7 @@ const MpesaPaymentSettlement = async (req, res) => {
             });
 
             res.status(201).json({
-                message: 'Manual cash payment processed successfully.',
+                message: 'Payment processed successfully.',
                 receipts,
                 updatedInvoices,
                 newClosingBalance: finalClosingBalance,
@@ -132,10 +132,11 @@ const MpesaPaymentSettlement = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error creating manual cash payment:', error);
-        res.status(500).json({ error: 'Failed to create manual cash payment.', details: error.message });
+        console.error('Error processing payment:', error);
+        res.status(500).json({ error: 'Failed to process payment.', details: error.message });
     }
 };
+
 
 function sanitizePhoneNumber(phone) {
     if (typeof phone !== 'string') {
