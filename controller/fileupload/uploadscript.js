@@ -131,18 +131,7 @@ const uploadCustomers = async (req, res) => {
     });
 };
 
-// Set up Express app and routes
-const app = express();
-const PORT = process.env.PORT || 5000;
-
-app.use(express.json());
-app.use('/api', upload.single('file'), uploadCustomers); // Set the route for uploading customers
-
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
-
+ 
 // Export the upload middleware and controller function for use in other files
 module.exports = {
   upload,
