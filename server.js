@@ -13,6 +13,7 @@ const sendtoGroup = require('./routes/sms/sendSms.js');
 const receiptRoute = require('./routes/receipt/receiptingRoute.js');
 const paymentRoute = require('./routes/payment/paymentRoutes.js');
 const statsRoute = require('./routes/stats/statsRoute.js')
+const statsRouteSms = require('./routes/sms/statsmsRoute.js')
 const cookieParser = require('cookie-parser');
 
 const app = express();
@@ -46,6 +47,7 @@ app.use('/api', collectionRoute);
 app.use('/api', receiptRoute);
 app.use('/api', paymentRoute);
 app.use('/api',statsRoute)
+app.use('./api',statsRouteSms)
 
 // Start the HTTP server
 app.listen(PORT, '0.0.0.0', () => {
