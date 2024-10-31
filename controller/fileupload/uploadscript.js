@@ -1,3 +1,4 @@
+const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -5,10 +6,16 @@ const csv = require('csv-parser');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Save to uploads directory
+    cb(null, uploadsDir); // Save to uploads directory
   },
   filename: (req, file, cb) => {
     cb(null, `${Date.now()}-${file.originalname}`); // Append timestamp to filename
@@ -54,8 +61,11 @@ const validateCustomerData = (data) => {
 
 // Controller function to upload and process CSV
 const uploadCustomers = async (req, res) => {
-  const filePath = path.join(__dirname, '..', 'uploads', req.file.filename);
+  if (!req.file) {
+    return res.status(400).json({ message: 'No file uploaded' });
+  }
 
+  const filePath = path.join(uploadsDir, req.file.filename);
   const customers = [];
   const existingPhoneNumbers = new Set();
   const existingEmails = new Set();
@@ -68,6 +78,7 @@ const uploadCustomers = async (req, res) => {
         email: true,
       },
     });
+    
     existingCustomers.forEach((customer) => {
       if (customer.phoneNumber) existingPhoneNumbers.add(customer.phoneNumber);
       if (customer.email) existingEmails.add(customer.email);
@@ -113,10 +124,26 @@ const uploadCustomers = async (req, res) => {
         console.error('Error saving customers:', error);
         res.status(500).json({ message: 'Error saving customers' });
       }
+    })
+    .on('error', (error) => {
+      console.error('Error reading CSV file:', error);
+      res.status(500).json({ message: 'Error processing file' });
     });
 };
 
-// Export upload middleware and controller function
+// Set up Express app and routes
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+app.use(express.json());
+app.use('/api', upload.single('file'), uploadCustomers); // Set the route for uploading customers
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
+
+// Export the upload middleware and controller function for use in other files
 module.exports = {
   upload,
   uploadCustomers,
