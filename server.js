@@ -14,6 +14,7 @@ const receiptRoute = require('./routes/receipt/receiptingRoute.js');
 const paymentRoute = require('./routes/payment/paymentRoutes.js');
 const statsRoute = require('./routes/stats/statsRoute.js')
 const statsms = require('./routes/sms/statsmsRoute.js')
+const uploadcustomers  = require('./routes/fileUpload/uploadRoute.js')
 const cookieParser = require('cookie-parser');
 
 const app = express();
@@ -48,6 +49,8 @@ app.use('/api', receiptRoute);
 app.use('/api', paymentRoute);
 app.use('/api',statsRoute);
 app.use('/api',statsms);
+app.use('/api', uploadcustomers); // Adjust your API path as needed
+
 
 // Start the HTTP server
 app.listen(PORT, '0.0.0.0', () => {
