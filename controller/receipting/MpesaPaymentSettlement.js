@@ -42,14 +42,12 @@ const MpesaPaymentSettlement = async (req, res) => {
             // Mark the payment as receipted
             await prisma.payment.update({
                 where: { id: paymentId },
-                data: {
-                    receipted: true,
-                },
+                data: { receipted: true },
             });
 
             // Get unpaid invoices for the customer
             const invoices = await prisma.invoice.findMany({
-                where: { customerId, status: 'UNPAID' },
+                where: { customerId, OR: [{ status: 'UNPAID' }, { status: 'PPAID' }] },
                 orderBy: { createdAt: 'asc' },
             });
 
@@ -64,11 +62,14 @@ const MpesaPaymentSettlement = async (req, res) => {
                 const invoiceDue = invoice.invoiceAmount - invoice.amountPaid;
                 const paymentForInvoice = Math.min(remainingAmount, invoiceDue);
 
+                const newAmountPaid = invoice.amountPaid + paymentForInvoice;
+                const newStatus = newAmountPaid >= invoice.invoiceAmount ? 'PAID' : 'PPAID';
+
                 const updatedInvoice = await prisma.invoice.update({
                     where: { id: invoice.id },
                     data: {
-                        amountPaid: invoice.amountPaid + paymentForInvoice,
-                        status: invoice.amountPaid + paymentForInvoice >= invoice.invoiceAmount ? 'PAID' : 'UNPAID',
+                        amountPaid: newAmountPaid,
+                        status: newStatus,
                     },
                 });
                 updatedInvoices.push(updatedInvoice);
@@ -89,25 +90,8 @@ const MpesaPaymentSettlement = async (req, res) => {
                 remainingAmount -= paymentForInvoice;
             }
 
-            // Handle overpayment
-            let finalClosingBalance = customer.closingBalance;
-            if (remainingAmount > 0) {
-                finalClosingBalance -= remainingAmount;
-
-                const overpaymentReceiptNumber = generateReceiptNumber();
-                const overpaymentReceipt = await prisma.receipt.create({
-                    data: {
-                        customerId,
-                        amount: remainingAmount,
-                        modeOfPayment,
-                        receiptNumber: overpaymentReceiptNumber,
-                        paymentId: paymentId,
-                        paidBy,
-                        createdAt: new Date(),
-                    },
-                });
-                receipts.push(overpaymentReceipt);
-            }
+            // Calculate final closing balance
+            let finalClosingBalance = remainingAmount > 0 ? -remainingAmount : customer.closingBalance - remainingAmount;
 
             // Update customer's closing balance
             await prisma.customer.update({
