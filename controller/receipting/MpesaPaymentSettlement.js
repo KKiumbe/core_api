@@ -45,7 +45,7 @@ const MpesaPaymentSettlement = async (req, res) => {
                 data: { receipted: true },
             });
 
-            // Get unpaid invoices for the customer
+            // Get unpaid or partially paid invoices for the customer
             const invoices = await prisma.invoice.findMany({
                 where: { customerId, OR: [{ status: 'UNPAID' }, { status: 'PPAID' }] },
                 orderBy: { createdAt: 'asc' },
@@ -92,45 +92,45 @@ const MpesaPaymentSettlement = async (req, res) => {
                 }
             }
 
-            // If there are no invoices or payment exceeds all due invoices, handle remaining balance
-            if (invoices.length === 0 || remainingAmount > 0) {
-                const finalClosingBalance = customer.closingBalance - remainingAmount;
+            // Calculate final closing balance
+            const finalClosingBalance = customer.closingBalance - remainingAmount;
 
-                const receiptNumber = generateReceiptNumber();
+            // Create a receipt for any remaining amount if there are no invoices or overpayment
+            if (remainingAmount > 0) {
                 const overpaymentReceipt = await prisma.receipt.create({
                     data: {
                         customerId,
                         amount: remainingAmount,
                         modeOfPayment,
-                        receiptNumber,
+                        receiptNumber: generateReceiptNumber(),
                         paymentId: paymentId,
                         paidBy,
                         createdAt: new Date(),
                     },
                 });
                 receipts.push(overpaymentReceipt);
-
-                // Update customer's closing balance
-                await prisma.customer.update({
-                    where: { id: customerId },
-                    data: { closingBalance: finalClosingBalance },
-                });
-
-                res.status(201).json({
-                    message: 'Payment processed successfully.',
-                    receipts,
-                    updatedInvoices: updatedInvoices,
-                    newClosingBalance: finalClosingBalance,
-                });
-
-                // Send confirmation SMS
-                const balanceMessage = finalClosingBalance < 0
-                    ? `Your closing balance is an overpayment of KES ${Math.abs(finalClosingBalance)}`
-                    : `Your closing balance is KES ${finalClosingBalance}`;
-                const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ${balanceMessage}. Thank you for your payment!`;
-                const sanitizedNumber = sanitizePhoneNumber(customer.phoneNumber);
-                await sendSMS(sanitizedNumber, message);
             }
+
+            // Update customer's closing balance
+            await prisma.customer.update({
+                where: { id: customerId },
+                data: { closingBalance: finalClosingBalance },
+            });
+
+            res.status(201).json({
+                message: 'Payment processed successfully.',
+                receipts,
+                updatedInvoices: updatedInvoices,
+                newClosingBalance: finalClosingBalance,
+            });
+
+            // Send confirmation SMS
+            const balanceMessage = finalClosingBalance < 0
+                ? `Your closing balance is an overpayment of KES ${Math.abs(finalClosingBalance)}`
+                : `Your closing balance is KES ${finalClosingBalance}`;
+            const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ${balanceMessage}. Thank you for your payment!`;
+            const sanitizedNumber = sanitizePhoneNumber(customer.phoneNumber);
+            await sendSMS(sanitizedNumber, message);
         });
 
     } catch (error) {
@@ -138,7 +138,6 @@ const MpesaPaymentSettlement = async (req, res) => {
         res.status(500).json({ error: 'Failed to process payment.', details: error.message });
     }
 };
-
 
 function sanitizePhoneNumber(phone) {
     if (typeof phone !== 'string') {
