@@ -2,7 +2,6 @@ const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const axios = require('axios');
 
-
 const prisma = new PrismaClient();
 const router = express.Router();
 
@@ -85,9 +84,7 @@ router.post('/send-to-group', async (req, res) => {
     }
 });
 
-// Send a single Sms
-
-
+// Send a single SMS
 router.post('/send-sms', async (req, res) => {
     const { message, mobile } = req.body;
 
@@ -141,8 +138,6 @@ router.post('/send-sms', async (req, res) => {
     }
 });
 
-
-
 // Send bills to all active customers
 router.post('/send-bills', async (req, res) => {
     try {
@@ -172,7 +167,7 @@ router.post('/send-bills', async (req, res) => {
             const invoices = customer.invoices;
 
             // Use the latest unpaid invoice amount for the current invoice
-            const currentInvoice = invoices.length > 0 ? invoices[0].invoiceAmount : 0; // Assume `amount` is the field for the invoice amount
+            const currentInvoice = invoices.length > 0 ? invoices[0].invoiceAmount : 0; // Assume `invoiceAmount` is the field for the invoice amount
             const currentBalance = customer.closingBalance;
 
             // Prepare the message based on the balance
@@ -211,6 +206,48 @@ router.post('/send-bills', async (req, res) => {
     }
 });
 
+// Send SMS to all active customers
+router.post('/send-to-all', async (req, res) => {
+    const { message } = req.body; // Get the message from the request body
+
+    // Validate request body
+    if (!message) {
+        return res.status(400).json({ error: 'Message is required.' });
+    }
+
+    try {
+        // Fetch all active customers
+        const activeCustomers = await prisma.customer.findMany({
+            where: {
+                status: 'ACTIVE', // Only fetch active customers
+            },
+        });
+
+        // Prepare messages for each customer
+        const messages = activeCustomers.map(customer => ({
+            phoneNumber: customer.phoneNumber,
+            message: message,
+        })).filter(message => message.phoneNumber); // Filter out any customers without a phone number
+
+        // Send SMS to each customer
+        if (messages.length > 0) {
+            const smsResponses = await sendSms(messages);
+            return res.status(200).json({
+                message: 'SMS sent to all active customers successfully.',
+                smsResponses,
+            });
+        } else {
+            return res.status(200).json({
+                message: 'No active customers to send SMS to.',
+            });
+        }
+    } catch (error) {
+        console.error('Error sending SMS to all customers:', error);
+        return res.status(500).json({ error: 'Failed to send SMS to all customers.' });
+    }
+});
+
+
 // Send bill to a single customer
 router.post('/send-bill', async (req, res) => {
     const { customerId } = req.body; // Extract customer ID from request body
@@ -242,7 +279,7 @@ router.post('/send-bill', async (req, res) => {
         const currentMonth = getCurrentMonthName();
 
         // Use the latest unpaid invoice amount for the current invoice
-        const currentInvoice = customer.invoices.length > 0 ? customer.invoices[0].invoiceAmount : 0; // Assume `amount` is the field for the invoice amount
+        const currentInvoice = customer.invoices.length > 0 ? customer.invoices[0].invoiceAmount : 0; // Assume `invoiceAmount` is the field for the invoice amount
         const currentBalance = customer.closingBalance;
 
         // Construct the message based on the closing balance

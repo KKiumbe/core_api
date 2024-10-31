@@ -1,10 +1,10 @@
 const  express = require ('express');
-const { sendHighBalanceCustomers, sendLowBalanceCustomers, sendToAllCustomers, sendUnpaidCustomers } = require ('../../controller/bulkSMS/dashboardSMS.js');
+const { sendHighBalanceCustomers, sendLowBalanceCustomers, sendUnpaidCustomers } = require ('../../controller/bulkSMS/dashboardSMS.js');
 
 const router = express.Router();
 
 // Route to send SMS to all customers
-router.post('/send-sms-all', sendToAllCustomers);
+
 
 router.post('./send-sms-unpaid' ,sendUnpaidCustomers)
 
