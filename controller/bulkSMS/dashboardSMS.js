@@ -2,7 +2,7 @@ const axios = require('axios'); // Assuming axios is used for making the HTTP re
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-const BULK_SMS_ENDPOINT = process.env.BULK_SMS_ENDPOINT; 
+const ENDPOINT = process.env.BULK_SMS_ENDPOINT; 
 
 // Function to sanitize phone numbers
 function sanitizePhoneNumber(phone) {
@@ -46,7 +46,7 @@ const sendBulkSMS = async (customers) => {
         const filteredSmsList = smsList.filter(sms => sms !== null);
 
         if (filteredSmsList.length > 0) {
-            const response = await axios.post(BULK_SMS_ENDPOINT, {
+            const response = await axios.post(ENDPOINT, {
                 count: filteredSmsList.length,
                 smslist: filteredSmsList,
             });
