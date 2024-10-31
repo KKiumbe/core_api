@@ -53,32 +53,54 @@ const MpesaPaymentSettlement = async (req, res) => {
 
             let remainingAmount = totalAmount;
             const receipts = [];
-            const updatedInvoices = [];
+            const updatedInvoices = invoices.length ? [] : null; // Set to null if no invoices are found
 
-            // Allocate payment to invoices
-            for (const invoice of invoices) {
-                if (remainingAmount <= 0) break;
+            // Process payment if there are unpaid or partially paid invoices
+            if (invoices.length > 0) {
+                for (const invoice of invoices) {
+                    if (remainingAmount <= 0) break;
 
-                const invoiceDue = invoice.invoiceAmount - invoice.amountPaid;
-                const paymentForInvoice = Math.min(remainingAmount, invoiceDue);
+                    const invoiceDue = invoice.invoiceAmount - invoice.amountPaid;
+                    const paymentForInvoice = Math.min(remainingAmount, invoiceDue);
 
-                const newAmountPaid = invoice.amountPaid + paymentForInvoice;
-                const newStatus = newAmountPaid >= invoice.invoiceAmount ? 'PAID' : 'PPAID';
+                    const newAmountPaid = invoice.amountPaid + paymentForInvoice;
+                    const newStatus = newAmountPaid >= invoice.invoiceAmount ? 'PAID' : 'PPAID';
 
-                const updatedInvoice = await prisma.invoice.update({
-                    where: { id: invoice.id },
-                    data: {
-                        amountPaid: newAmountPaid,
-                        status: newStatus,
-                    },
-                });
-                updatedInvoices.push(updatedInvoice);
+                    const updatedInvoice = await prisma.invoice.update({
+                        where: { id: invoice.id },
+                        data: {
+                            amountPaid: newAmountPaid,
+                            status: newStatus,
+                        },
+                    });
+                    updatedInvoices.push(updatedInvoice);
+
+                    const receiptNumber = generateReceiptNumber();
+                    const receipt = await prisma.receipt.create({
+                        data: {
+                            customerId,
+                            amount: paymentForInvoice,
+                            modeOfPayment,
+                            receiptNumber,
+                            paymentId: paymentId,
+                            paidBy,
+                            createdAt: new Date(),
+                        },
+                    });
+                    receipts.push(receipt);
+                    remainingAmount -= paymentForInvoice;
+                }
+            }
+
+            // If there are no invoices or payment exceeds all due invoices, handle remaining balance
+            if (invoices.length === 0 || remainingAmount > 0) {
+                const finalClosingBalance = customer.closingBalance - remainingAmount;
 
                 const receiptNumber = generateReceiptNumber();
-                const receipt = await prisma.receipt.create({
+                const overpaymentReceipt = await prisma.receipt.create({
                     data: {
                         customerId,
-                        amount: paymentForInvoice,
+                        amount: remainingAmount,
                         modeOfPayment,
                         receiptNumber,
                         paymentId: paymentId,
@@ -86,33 +108,29 @@ const MpesaPaymentSettlement = async (req, res) => {
                         createdAt: new Date(),
                     },
                 });
-                receipts.push(receipt);
-                remainingAmount -= paymentForInvoice;
+                receipts.push(overpaymentReceipt);
+
+                // Update customer's closing balance
+                await prisma.customer.update({
+                    where: { id: customerId },
+                    data: { closingBalance: finalClosingBalance },
+                });
+
+                res.status(201).json({
+                    message: 'Payment processed successfully.',
+                    receipts,
+                    updatedInvoices: updatedInvoices,
+                    newClosingBalance: finalClosingBalance,
+                });
+
+                // Send confirmation SMS
+                const balanceMessage = finalClosingBalance < 0
+                    ? `Your closing balance is an overpayment of KES ${Math.abs(finalClosingBalance)}`
+                    : `Your closing balance is KES ${finalClosingBalance}`;
+                const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ${balanceMessage}. Thank you for your payment!`;
+                const sanitizedNumber = sanitizePhoneNumber(customer.phoneNumber);
+                await sendSMS(sanitizedNumber, message);
             }
-
-            // Calculate final closing balance
-            let finalClosingBalance = remainingAmount > 0 ? -remainingAmount : customer.closingBalance - remainingAmount;
-
-            // Update customer's closing balance
-            await prisma.customer.update({
-                where: { id: customerId },
-                data: { closingBalance: finalClosingBalance },
-            });
-
-            res.status(201).json({
-                message: 'Payment processed successfully.',
-                receipts,
-                updatedInvoices,
-                newClosingBalance: finalClosingBalance,
-            });
-
-            // Send confirmation SMS
-            const balanceMessage = finalClosingBalance < 0
-                ? `Your closing balance is an overpayment of KES ${Math.abs(finalClosingBalance)}`
-                : `Your closing balance is KES ${finalClosingBalance}`;
-            const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ${balanceMessage}. Thank you for your payment!`;
-            const sanitizedNumber = sanitizePhoneNumber(customer.phoneNumber);
-            await sendSMS(sanitizedNumber, message);
         });
 
     } catch (error) {
