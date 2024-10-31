@@ -138,7 +138,8 @@ async function createInvoice(req, res) {
       invoiceStatus = 'PAID'; // Fully Paid
     }
 
-    const newInvoice = await prisma.invoice.create({
+    const newInvoice =
+     await prisma.invoice.create({
       data: {
         customerId,
         invoiceNumber,

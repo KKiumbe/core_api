@@ -47,7 +47,7 @@ app.use('/api', collectionRoute);
 app.use('/api', receiptRoute);
 app.use('/api', paymentRoute);
 app.use('/api',statsRoute);
-app.use('./api',statsms);
+app.use('/api',statsms);
 
 // Start the HTTP server
 app.listen(PORT, '0.0.0.0', () => {
