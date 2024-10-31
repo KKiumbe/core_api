@@ -1,6 +1,7 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const axios = require('axios');
+const { sendSMS } = require('./sms');
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -84,38 +85,27 @@ router.post('/send-to-group', async (req, res) => {
     }
 });
 
-// Send a single SMS
-router.post('/send-sms', async (req, res) => {
-    const { mobile, message } = req.body; // Extract mobile and message from request body
+// Send a single Sms
 
-    // Validate input
-    if (!mobile || !message) {
-        return res.status(400).json({ error: 'Mobile number and message are required.' });
+router.post('/send-sms', async (req, res) => {
+    const { message, mobile } = req.body;
+
+    if (!message || !mobile) {
+        return res.status(400).json({ success: false, message: 'Missing message or mobile number.' });
     }
 
-
-
-    // Sanitize the mobile number
-    const sanitizedMobile = sanitizePhoneNumber(mobile);
+    const sanitizedNumber = sanitizePhoneNumber(mobile);
 
     try {
-        const payload = {
-            apikey: SMS_API_KEY,
-            partnerID: PARTNER_ID,
-            shortcode: SHORTCODE,
-            message: message,
-            mobile: sanitizedMobile,
-        };
-
-        // Send the SMS request
-        const response = await axios.post(SMS_ENDPOINT, payload);
+        const result = await sendSMS(sanitizedNumber, message);
         
-        // Return success response
-        return res.status(response.status).json({ message: 'SMS sent successfully!', data: response.data });
+        if (result.success) {
+            res.status(200).json({ success: true, message: 'SMS sent successfully!' });
+        } else {
+            res.status(500).json({ success: false, message: result.error });
+        }
     } catch (error) {
-        console.error('Error sending SMS:', error);
-        const errorMessage = error.response ? error.response.data : 'Failed to send SMS.';
-        return res.status(500).json({ error: errorMessage });
+        res.status(500).json({ success: false, message: 'An unexpected error occurred while sending SMS.' });
     }
 });
 
