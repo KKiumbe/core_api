@@ -12,9 +12,9 @@ const collectionRoute = require('./routes/collection/collectionRoute.js');
 const sendtoGroup = require('./routes/sms/sendSms.js');
 const receiptRoute = require('./routes/receipt/receiptingRoute.js');
 const paymentRoute = require('./routes/payment/paymentRoutes.js');
-const statsRoute = require('./routes/stats/statsRoute.js')
-const statsms = require('./routes/sms/statsmsRoute.js')
-const uploadcustomers  = require('./routes/fileUpload/uploadRoute.js')
+const statsRoute = require('./routes/stats/statsRoute.js');
+const statsms = require('./routes/sms/statsmsRoute.js');
+const uploadcustomers = require('./routes/fileUpload/uploadRoute.js');
 const cookieParser = require('cookie-parser');
 
 const app = express();
@@ -30,7 +30,6 @@ app.use(cors({
     origin: '*', 
     credentials: true,
 }));
-app.use(bodyParser.json());
 
 // MongoDB Connection
 mongoose
@@ -47,12 +46,17 @@ app.use('/api', mpesaRoute);
 app.use('/api', collectionRoute);
 app.use('/api', receiptRoute);
 app.use('/api', paymentRoute);
-app.use('/api',statsRoute);
-app.use('/api',statsms);
+app.use('/api', statsRoute);
+app.use('/api', statsms);
 app.use('/api', uploadcustomers); // Adjust your API path as needed
 
-
 // Start the HTTP server
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on http://212.47.74.158:${PORT}`);
+});
+
+// Set server timeout
+const timeoutDuration = 60000; // Set timeout duration in milliseconds (e.g., 60000 ms = 60 seconds)
+server.setTimeout(timeoutDuration, () => {
+  console.log(`Server timed out after ${timeoutDuration / 1000} seconds.`);
 });
