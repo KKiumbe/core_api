@@ -8,9 +8,9 @@ function generateReceiptNumber() {
 }
 
 const MpesaPaymentSettlement = async (req, res) => {
-    const { customerId, totalAmount, modeOfPayment, paidBy, paymentId } = req.body;
+    const { customerId, modeOfPayment, paidBy, paymentId } = req.body;
 
-    if (!customerId || !totalAmount || !modeOfPayment || !paidBy) {
+    if (!customerId || !modeOfPayment || !paidBy || !paymentId) {
         return res.status(400).json({ message: 'Missing required fields.' });
     }
 
@@ -26,18 +26,21 @@ const MpesaPaymentSettlement = async (req, res) => {
                 return res.status(404).json({ message: 'Customer not found.' });
             }
 
-            // Check if payment with the provided ID exists and if it's already receipted
-            const PaymentReceipted = await prisma.payment.findUnique({
+            // Retrieve the payment amount
+            const payment = await prisma.payment.findUnique({
                 where: { id: paymentId },
+                select: { amount: true, receipted: true },
             });
             
-            if (!PaymentReceipted) {
+            if (!payment) {
                 return res.status(404).json({ message: 'Payment not found.' });
             }
 
-            if (PaymentReceipted.receipted) {
+            if (payment.receipted) {
                 return res.status(400).json({ message: 'Payment with this ID has already been receipted.' });
             }
+
+            const totalAmount = payment.amount; // Get the amount from the payment record
 
             // Mark the payment as receipted
             await prisma.payment.update({
@@ -75,6 +78,7 @@ const MpesaPaymentSettlement = async (req, res) => {
                     });
                     updatedInvoices.push(updatedInvoice);
 
+                    // Create receipt for the amount applied to this invoice
                     const receiptNumber = generateReceiptNumber();
                     const receipt = await prisma.receipt.create({
                         data: {
@@ -92,17 +96,15 @@ const MpesaPaymentSettlement = async (req, res) => {
                 }
             }
 
-            // Calculate final closing balance
-            const finalClosingBalance = customer.closingBalance - remainingAmount;
-
-            // Create a receipt for any remaining amount if there are no invoices or overpayment
+            // Handle remaining amount (overpayment) if there is any left after applying to invoices
             if (remainingAmount > 0) {
+                const overpaymentReceiptNumber = generateReceiptNumber();
                 const overpaymentReceipt = await prisma.receipt.create({
                     data: {
                         customerId,
                         amount: remainingAmount,
                         modeOfPayment,
-                        receiptNumber: generateReceiptNumber(),
+                        receiptNumber: overpaymentReceiptNumber,
                         paymentId: paymentId,
                         paidBy,
                         createdAt: new Date(),
@@ -110,6 +112,9 @@ const MpesaPaymentSettlement = async (req, res) => {
                 });
                 receipts.push(overpaymentReceipt);
             }
+
+            // Calculate the new closing balance
+            const finalClosingBalance = customer.closingBalance - totalAmount + remainingAmount;
 
             // Update customer's closing balance
             await prisma.customer.update({
@@ -120,7 +125,7 @@ const MpesaPaymentSettlement = async (req, res) => {
             res.status(201).json({
                 message: 'Payment processed successfully.',
                 receipts,
-                updatedInvoices: updatedInvoices,
+                updatedInvoices,
                 newClosingBalance: finalClosingBalance,
             });
 
