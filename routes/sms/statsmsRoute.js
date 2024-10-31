@@ -1,5 +1,5 @@
-import express from 'express';
-import { sendHighBalanceCustomers, sendLowBalanceCustomers, sendToAllCustomers, sendUnpaidCustomers } from '../../controller/bulkSMS/dashboardSMS.js';
+const  express = require ('express');
+const { sendHighBalanceCustomers, sendLowBalanceCustomers, sendToAllCustomers, sendUnpaidCustomers } = require ('../../controller/bulkSMS/dashboardSMS.js');
 
 const router = express.Router();
 
@@ -15,4 +15,6 @@ router.post('/send-sms-low-balance', sendLowBalanceCustomers);
 router.post('/send-sms-high-balance', sendHighBalanceCustomers);
 
 // Export the router to use in your main app
-export default router;
+module.exports = router;
+
+

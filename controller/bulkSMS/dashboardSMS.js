@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 const BULK_SMS_ENDPOINT = process.env.BULK_SMS_ENDPOINT; 
 
 // Function to send bulk SMS
-const sendBulkSMS = async (customers) => {
+ sendBulkSMS = async (customers) => {
   try {
     const smsList = customers.map(customer => {
       const mobile = customer.phoneNumber;
@@ -43,7 +43,7 @@ const sendBulkSMS = async (customers) => {
 };
 
 // Function to send SMS to unpaid customers
-export const sendUnpaidCustomers = async () => {
+ const sendUnpaidCustomers = async () => {
   try {
     const activeCustomers = await prisma.customer.findMany({
       where: { status: 'ACTIVE' },
@@ -74,7 +74,7 @@ export const sendUnpaidCustomers = async () => {
 };
 
 // Function to send SMS to low balance customers
-export const sendLowBalanceCustomers = async () => {
+ const sendLowBalanceCustomers = async () => {
   try {
     const activeCustomers = await prisma.customer.findMany({
       where: { status: 'ACTIVE' },
@@ -105,7 +105,7 @@ export const sendLowBalanceCustomers = async () => {
 };
 
 // Function to send SMS to high balance customers
-export const sendHighBalanceCustomers = async () => {
+ const sendHighBalanceCustomers = async () => {
   try {
     const activeCustomers = await prisma.customer.findMany({
       where: { status: 'ACTIVE' },
@@ -136,7 +136,7 @@ export const sendHighBalanceCustomers = async () => {
 };
 
 // Function to send SMS to all customers
-export const sendToAllCustomers = async () => {
+ const sendToAllCustomers = async () => {
   try {
     const activeCustomers = await prisma.customer.findMany({
       where: { status: 'ACTIVE' },
@@ -160,3 +160,8 @@ export const sendToAllCustomers = async () => {
     console.error('Error fetching all customers:', error);
   }
 };
+
+
+module.exports ={
+    sendHighBalanceCustomers,sendLowBalanceCustomers,sendToAllCustomers,sendUnpaidCustomers
+}
