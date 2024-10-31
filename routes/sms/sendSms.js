@@ -90,15 +90,13 @@ router.post('/send-to-group', async (req, res) => {
 router.post('/send-sms', async (req, res) => {
     const { message, mobile } = req.body;
 
-    const formattedNumber = sanitizePhoneNumber(mobile);
-
-    const sendSMS = async (formattedNumber, message) => {
-        console.log(`Sanitised number is ${formattedNumber}`);
+    const sendSMS = async (sanitisedNumber, message) => {
+        console.log(`Sanitised number is ${sanitisedNumber}`);
         try {
             const payload = {
                 partnerID: PARTNER_ID,
                 apikey: SMS_API_KEY,
-                mobile: formattedNumber,
+                mobile: sanitisedNumber,
                 message,
                 shortcode: SHORTCODE,
             };
@@ -120,8 +118,9 @@ router.post('/send-sms', async (req, res) => {
     };
 
     try {
-        // Sanitize phone number (assuming sanitizePhoneNumber is defined somewhere)
-        const sanitisedNumber = sanitizePhoneNumber(mobile);
+        // Convert mobile to a string if it's not
+        const mobileString = String(mobile);
+        const sanitisedNumber = sanitizePhoneNumber(mobileString);
 
         // Send the SMS
         const response = await sendSMS(sanitisedNumber, message);
@@ -139,6 +138,7 @@ router.post('/send-sms', async (req, res) => {
         });
     }
 });
+
 
 // Send bills to all active customers
 router.post('/send-bills', async (req, res) => {
