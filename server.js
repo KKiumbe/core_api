@@ -4,7 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet'); // Import Helmet
 require('dotenv').config();
 const bodyParser = require('body-parser');
-const customerRoutes = require('./routes/customerRoutes.js');
+const customerRoutes = require('./routes/customer/customerRoutes.js');
 const userRoutes = require('./routes/userRoute/userRoute.js');
 const invoiceRoutes = require('./routes/invoices/invoiceRoute.js');
 const mpesaRoute = require('./routes/mpesa/mpesaRoute.js');
@@ -15,6 +15,7 @@ const paymentRoute = require('./routes/payment/paymentRoutes.js');
 const statsRoute = require('./routes/stats/statsRoute.js');
 const statsms = require('./routes/sms/statsmsRoute.js');
 const uploadcustomers = require('./routes/fileUpload/uploadRoute.js');
+const customerdetailsRoute = require('./routes/customer/customerDetailsRoute.js')
 const cookieParser = require('cookie-parser');
 
 const app = express();
@@ -49,6 +50,7 @@ app.use('/api', paymentRoute);
 app.use('/api', statsRoute);
 app.use('/api', statsms);
 app.use('/api', uploadcustomers); // Adjust your API path as needed
+app.use('/api', customerdetailsRoute); 
 
 // Start the HTTP server
 const server = app.listen(PORT, '0.0.0.0', () => {
