@@ -12,6 +12,35 @@ const SHORTCODE = process.env.SHORTCODE;
 const BULK_SMS_ENDPOINT = process.env.BULK_SMS_ENDPOINT;
 const SMS_ENDPOINT = process.env.SMS_ENDPOINT;
 
+
+const SMS_BALANCE_URL = process.env.SMS_BALANCE_URL;
+
+// Function to check SMS balance
+const checkSmsBalance = async () => {
+    try {
+        const response = await axios.post(SMS_BALANCE_URL, {
+            apikey: SMS_API_KEY,
+            partnerID: PARTNER_ID
+        });
+        return response.data.balance; // Adjust this based on actual response structure
+    } catch (error) {
+        console.error('Error fetching SMS balance:', error);
+        throw new Error('Failed to retrieve SMS balance');
+    }
+};
+
+const sendSmsWithBalanceCheck = async (smsPayload) => {
+    const balance = await checkSmsBalance();
+    if (balance < smsPayload.length) {
+        throw new Error('Insufficient SMS balance');
+    }
+    const response = await axios.post(BULK_SMS_ENDPOINT, {
+        count: smsPayload.length,
+        smslist: smsPayload,
+    });
+    return response.data;
+};
+
 // Function to sanitize the phone number
 const sanitizePhoneNumber = (phone) => {
     if (typeof phone !== 'string') {
@@ -70,10 +99,9 @@ router.post('/send-to-group', async (req, res) => {
         });
 
         // Send the bulk SMS
-        const response = await axios.post(BULK_SMS_ENDPOINT, {
-            count: smsList.length,
-            smslist: smsList,
-        });
+        const response = await sendSmsWithBalanceCheck(smsList);
+
+    
 
         console.log(`Sent ${smsList.length} bulk SMS messages.`);
         return res.status(200).json({ message: `Sent ${smsList.length} SMS messages.`, data: response.data });
@@ -97,6 +125,11 @@ router.post('/send-sms', async (req, res) => {
         const sendSMS = async (sanitisedNumber, message) => {
             console.log(`Sanitised number is ${sanitisedNumber}`);
             try {
+                const balance = await checkSmsBalance();
+                if (balance < 3) {
+                    return res.status(400).json({ error: 'Insufficient SMS balance.' });
+                }
+
                 const payload = {
                     partnerID: PARTNER_ID,
                     apikey: SMS_API_KEY,
@@ -188,6 +221,12 @@ router.post('/send-bills', async (req, res) => {
             };
         }).filter(message => message !== null); // Filter out null messages
 
+        const balance = await checkSmsBalance();
+        if (balance < messages.length * 2) { // Assuming each SMS requires at least 2 credits
+            console.log('Insufficient SMS balance to send messages.');
+            return res.status(500).json({ error: 'Insufficient SMS balance to send messages.' });
+        }
+
         // Send SMS to each customer
         if (messages.length > 0) {
             const smsResponses = await sendSms(messages);
@@ -207,6 +246,8 @@ router.post('/send-bills', async (req, res) => {
 });
 
 // Send SMS to all active customers
+
+
 router.post('/send-to-all', async (req, res) => {
     const { message } = req.body; // Get the message from the request body
 
@@ -221,13 +262,23 @@ router.post('/send-to-all', async (req, res) => {
             where: {
                 status: 'ACTIVE', // Only fetch active customers
             },
+            select: {
+                phoneNumber: true, // Only select the phone number for simplicity
+            }
         });
 
         // Prepare messages for each customer
         const messages = activeCustomers.map(customer => ({
             phoneNumber: customer.phoneNumber,
             message: message,
-        })).filter(message => message.phoneNumber); // Filter out any customers without a phone number
+        })).filter(msg => msg.phoneNumber); // Filter out any customers without a phone number
+
+        // Check SMS balance before sending
+        const balance = await checkSmsBalance();
+        if (balance < messages.length * 2) { // Assuming each SMS requires at least 2 credits
+            console.log('Insufficient SMS balance to send messages.');
+            return res.status(500).json({ error: 'Insufficient SMS balance to send messages.' });
+        }
 
         // Send SMS to each customer
         if (messages.length > 0) {
@@ -248,7 +299,8 @@ router.post('/send-to-all', async (req, res) => {
 });
 
 
-// Send bill to a single customer
+
+
 router.post('/send-bill', async (req, res) => {
     const { customerId } = req.body; // Extract customer ID from request body
 
@@ -297,6 +349,13 @@ router.post('/send-bill', async (req, res) => {
         // Sanitize the phone number
         const sanitizedMobile = sanitizePhoneNumber(customer.phoneNumber);
 
+        // Check SMS balance before sending
+        const balance = await checkSmsBalance();
+        if (balance < 2) { // Ensure there's at least 2 credits for sending the SMS
+            console.log('Insufficient SMS balance to send bill.');
+            return res.status(500).json({ error: 'Insufficient SMS balance.' });
+        }
+
         // Send the SMS
         const payload = {
             apikey: SMS_API_KEY,
@@ -315,6 +374,8 @@ router.post('/send-bill', async (req, res) => {
         return res.status(500).json({ error: errorMessage });
     }
 });
+
+
 
 // Function to send SMS to a list of recipients
 const sendSms = async (messages) => {

@@ -3,6 +3,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 const ENDPOINT = process.env.BULK_SMS_ENDPOINT; 
+const SMS_BALANCE_URL = process.env.SMS_BALANCE_URL; // URL for checking SMS balance
 
 // Function to sanitize phone numbers
 function sanitizePhoneNumber(phone) {
@@ -21,6 +22,20 @@ function sanitizePhoneNumber(phone) {
         return `254${phone}`; // Add '254' for other formats
     }
 }
+
+// Function to check SMS balance
+const checkSmsBalance = async () => {
+    try {
+        const response = await axios.post(SMS_BALANCE_URL, {
+            apikey: process.env.SMS_API_KEY,
+            partnerID: process.env.PARTNER_ID,
+        });
+        return response.data.balance; // Adjust based on actual API response structure
+    } catch (error) {
+        console.error('Error fetching SMS balance:', error);
+        throw new Error('Failed to retrieve SMS balance');
+    }
+};
 
 // Function to send bulk SMS
 const sendBulkSMS = async (customers) => {
@@ -85,6 +100,12 @@ const sendUnpaidCustomers = async (req, res) => {
             message: `Dear ${customer.firstName}, you have an outstanding balance of ${customer.closingBalance.toFixed(2)}. Please pay your dues.`,
         }));
 
+        const balance = await checkSmsBalance(); // Check balance before sending
+        if (balance < unpaidCustomers.length * 2) { // Ensure balance is at least twice the number of customers
+            console.log('Insufficient SMS balance for unpaid customers. Requires at least twice the number of customers.');
+            return res.status(500).json({ message: 'Insufficient SMS balance.' });
+        }
+
         if (customersWithMessages.length > 0) {
             await sendBulkSMS(customersWithMessages);
             return res.status(200).json({ message: 'SMS sent to unpaid customers.' });
@@ -119,6 +140,12 @@ const sendLowBalanceCustomers = async (req, res) => {
             message: `Dear ${customer.firstName}, your current balance is low at ${customer.closingBalance.toFixed(2)}. Please top up soon.`,
         }));
 
+        const balance = await checkSmsBalance(); // Check balance before sending
+        if (balance < lowBalanceCustomers.length * 2) {
+            console.log('Insufficient SMS balance for low balance customers. Requires at least twice the number of customers.');
+            return res.status(500).json({ message: 'Insufficient SMS balance.' });
+        }
+
         if (customersWithMessages.length > 0) {
             await sendBulkSMS(customersWithMessages);
             return res.status(200).json({ message: 'SMS sent to low balance customers.' });
@@ -152,6 +179,12 @@ const sendHighBalanceCustomers = async (req, res) => {
             ...customer,
             message: `Dear ${customer.firstName}, thank you for your timely payments! Your current balance is ${customer.closingBalance.toFixed(2)}.`,
         }));
+
+        const balance = await checkSmsBalance(); // Check balance before sending
+        if (balance < highBalanceCustomers.length * 2) {
+            console.log('Insufficient SMS balance for high balance customers. Requires at least twice the number of customers.');
+            return res.status(500).json({ message: 'Insufficient SMS balance.' });
+        }
 
         if (customersWithMessages.length > 0) {
             await sendBulkSMS(customersWithMessages);

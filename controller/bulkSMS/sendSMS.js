@@ -1,7 +1,20 @@
-const axios = require('axios'); // Assuming axios is used for making the HTTP requests
+const axios = require('axios');
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
+
+async function checkSmsBalance() {
+  try {
+    const response = await axios.post(process.env.SMS_BALANCE_URL, {
+      apikey: process.env.SMS_API_KEY,
+      partnerID: process.env.PARTNER_ID,
+    });
+    return response.data.balance; // Adjust based on actual API response structure
+  } catch (error) {
+    console.error('Error fetching SMS balance:', error);
+    throw new Error('Failed to retrieve SMS balance');
+  }
+}
 
 async function generateBulkBillSmsMessage() {
   const ENDPOINT = process.env.BULK_SMS_ENDPOINT;
@@ -13,6 +26,16 @@ async function generateBulkBillSmsMessage() {
         status: 'ACTIVE'
       }
     });
+
+    // Check SMS balance before proceeding
+    const balance = await checkSmsBalance();
+    const customerCount = activeCustomers.length;
+
+    // Check if the balance is sufficient (at least twice the number of customers)
+    if (balance < customerCount * 2) {
+      console.log('Insufficient SMS balance. Requires at least twice the number of active customers.');
+      throw new Error('Insufficient SMS balance.');
+    }
 
     // Prepare the bulk SMS request body
     const smsList = await Promise.all(
@@ -48,11 +71,11 @@ async function generateBulkBillSmsMessage() {
         const message = `Dear ${customerName}, your ${month} bill is ${currentMonthBill}, your previous balance is ${closingBalance - currentMonthBill}, and your total balance is ${closingBalance}. Pay via Paybill number 89354, account number is your phone number.`;
 
         return {
-          partnerID: process.env.PARTNER_ID, // Replace with actual partnerID
-          apikey: process.env.SMS_API_KEY, // Replace with actual API key
+          partnerID: process.env.PARTNER_ID,
+          apikey: process.env.SMS_API_KEY,
           pass_type: "plain",
-          clientsmsid: Math.floor(Math.random() * 10000), // Unique client SMS ID
-          mobile: mobile, // Use the formatted mobile number
+          clientsmsid: Math.floor(Math.random() * 10000),
+          mobile: mobile,
           message: message,
           shortcode: process.env.SHORTCODE,
         };
@@ -62,9 +85,9 @@ async function generateBulkBillSmsMessage() {
     // Filter out any null results (customers without invoices)
     const filteredSmsList = smsList.filter(sms => sms !== null);
 
-    // Send the bulk SMS
+    // Send the bulk SMS if there are any messages to send
     if (filteredSmsList.length > 0) {
-      const response = await axios.post(`${ENDPOINT}`, {
+      const response = await axios.post(ENDPOINT, {
         count: filteredSmsList.length,
         smslist: filteredSmsList
       });
