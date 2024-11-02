@@ -39,7 +39,7 @@ const fetchPaymentsByTransactionId = async (req, res) => {
     try {
         const payments = await prisma.payment.findMany({
             where: {
-                mpesaTransactionId: transactionId, // Search by mpesaTransactionId
+                TransactionId: transactionId, // Search by mpesaTransactionId
             },
             include: {
                 receipt: {
