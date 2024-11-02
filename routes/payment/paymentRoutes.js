@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.get('/payments', fetchAllPayments);
 router.get('/payments/:paymentId', fetchPaymentById);
-router.get('/payments/search', fetchPaymentsByTransactionId);
+router.get('/payments-search', fetchPaymentsByTransactionId);
 
 
 module.exports = router;
