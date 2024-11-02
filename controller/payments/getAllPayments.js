@@ -28,7 +28,9 @@ const fetchAllPayments = async (req, res) => {
     }
 };
 
-// Controller to fetch payments by Mpesa transaction ID
+
+
+// Controller to fetch payments by transaction ID
 const fetchPaymentsByTransactionId = async (req, res) => {
     const { transactionId } = req.query; // Get the transaction ID from query parameters
 
@@ -39,7 +41,7 @@ const fetchPaymentsByTransactionId = async (req, res) => {
     try {
         const payments = await prisma.payment.findMany({
             where: {
-                TransactionId: transactionId, // Search by mpesaTransactionId
+                transactionId: transactionId, // Search by transactionId (now allowing multiple)
             },
             include: {
                 receipt: {
@@ -51,7 +53,6 @@ const fetchPaymentsByTransactionId = async (req, res) => {
                         },
                     },
                 },
-               
             },
         });
 
@@ -65,6 +66,8 @@ const fetchPaymentsByTransactionId = async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 };
+
+
 
 // Controller to fetch a payment by ID with associated invoices and customer details
 const fetchPaymentById = async (req, res) => {
