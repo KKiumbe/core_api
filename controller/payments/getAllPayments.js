@@ -39,7 +39,7 @@ const fetchPaymentsByTransactionId = async (req, res) => {
     }
 
     try {
-        const payments = await prisma.payment.findMany({
+        const payments = await prisma.payment.findUnique({
             where: {
                 TransactionId: transactionId, // Search by transactionId as a string
             },

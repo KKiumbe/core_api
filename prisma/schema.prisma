@@ -138,7 +138,7 @@ model Payment {
   amount                  Float
   modeOfPayment           ModeOfPayment
   receipted               Boolean     @default(false)
-  TransactionId      String?    
+  TransactionId      String?   @unique 
    Ref            String?  
 
   // One-to-one relationship with Receipt
