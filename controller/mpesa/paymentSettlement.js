@@ -62,6 +62,7 @@ async function settleInvoice() {
                         TransactionId: MpesaCode,
                         receipted: false,
                         createdAt: TransTime,
+                        Ref: BillRefNumber 
                     },
                 });
                 continue;
@@ -75,6 +76,7 @@ async function settleInvoice() {
                     receipted: false,
                     createdAt: TransTime,
                     receiptId: null,
+                    Ref: BillRefNumber 
                 },
             });
 
