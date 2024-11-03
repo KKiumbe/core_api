@@ -29,7 +29,7 @@ const MpesaPaymentSettlement = async (req, res) => {
             // Retrieve the payment amount
             const payment = await prisma.payment.findUnique({
                 where: { id: paymentId },
-                select: { amount: true, receipted: true },
+                select: { amount: true, receipted: false },
             });
             
             if (!payment) {
