@@ -12,6 +12,7 @@ router.get('/collections', async (req, res) => {
     // Fetch customers with their details for the specified collection day
     const customers = await prisma.customer.findMany({
       where: {
+        status: 'ACTIVE',
         garbageCollectionDay: day ? day.toUpperCase() : undefined,
       },
     });
@@ -63,6 +64,7 @@ router.get('/collections/filter', async (req, res) => {
     // Fetch customers filtered by collection day
     const customers = await prisma.customer.findMany({
       where: {
+        status: 'ACTIVE',
         garbageCollectionDay: day ? day.toUpperCase() : undefined,
       },
     });
