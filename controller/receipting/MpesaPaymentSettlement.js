@@ -3,7 +3,7 @@ const { sendSMS } = require('../../routes/sms/sms');
 const prisma = new PrismaClient();
 
 function generateReceiptNumber() {
-    const randomDigits = Math.floor(10000 + Math.random() * 90000);
+    const randomDigits = Math.floor(10000 + Math.random() * 900000);
     return `RCPT${randomDigits}`;
 }
 
