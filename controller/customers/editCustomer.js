@@ -13,10 +13,20 @@ const editCustomer = async (req, res) => {
     gender,
     county,
     town,
-    location,
-    category,
     status,
+    location,
+    estateName,           // Optional field for estate name
+    building,              // Optional field for building name
+    houseNumber,           // Optional field for house number
+    category,
     monthlyCharge,
+    garbageCollectionDay,  
+    collected,
+    closingBalance
+   
+
+    
+
   } = req.body;
 
   // Check if the customer ID is provided
@@ -29,17 +39,23 @@ const editCustomer = async (req, res) => {
     const updatedCustomer = await prisma.customer.update({
       where: { id: customerId },
       data: {
-        firstName,
-        lastName,
-        email,
-        phoneNumber,
-        gender,
-        county,
-        town,
-        location,
-        category,
-        status,
-        monthlyCharge,
+    firstName,
+    lastName,
+    email,
+    phoneNumber,
+    gender,
+    county,
+    town,
+    status,
+    location,
+    estateName,           // Optional field for estate name
+    building,              // Optional field for building name
+    houseNumber,           // Optional field for house number
+    category,
+    monthlyCharge,
+    garbageCollectionDay,  
+    collected,
+    closingBalance
       },
     });
 
