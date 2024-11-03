@@ -28,7 +28,7 @@ model Customer {
   id                    String                @id @default(auto()) @map("_id") @db.ObjectId
   firstName             String
   lastName              String
-  email                 String?               @unique
+  email                 String?               
   phoneNumber           String                @unique
   secondaryPhoneNumber  String?
   gender                String?
