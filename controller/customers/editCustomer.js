@@ -15,6 +15,7 @@ const editCustomer = async (req, res) => {
     town,
     location,
     category,
+    status,
     monthlyCharge,
   } = req.body;
 
@@ -37,6 +38,7 @@ const editCustomer = async (req, res) => {
         town,
         location,
         category,
+        status,
         monthlyCharge,
       },
     });
