@@ -101,8 +101,8 @@ function generatePDF(groupedByCollectionDay, filePath) {
       // Add header for the table
       doc.fontSize(12).text('Name', 50, doc.y, { continued: true });
       doc.text('Phone Number', 200, doc.y, { continued: true });
-      doc.text('Monthly Charge', 350, doc.y, { continued: true });
-      doc.text('Closing Balance', 480, doc.y ,{ continued: true });
+      doc.text('Closing Balance', 350, doc.y, { continued: true });
+      doc.text('Monthly Charge', 480, doc.y );
       doc.moveDown();
 
       // Add a horizontal line below the header
@@ -116,8 +116,8 @@ function generatePDF(groupedByCollectionDay, filePath) {
           .fillColor('#333')
           .text(`${customer.firstName} ${customer.lastName}`, 50, doc.y, { continued: true });
         doc.text(customer.phoneNumber, 200, doc.y, { continued: true });
-        doc.text(customer.monthlyCharge.toFixed(2), 350, doc.y, { continued: true });
-        doc.text(customer.closingBalance.toFixed(2), 480, doc.y  ,{ continued: true }); // Display closing balance
+        doc.text(customer.closingBalance.toFixed(2), 350, doc.y, { continued: true });
+        doc.text(customer.monthlyCharge.toFixed(2), 480, doc.y ); // Display closing balance
         doc.moveDown(); // Add some spacing between customers
       });
 
