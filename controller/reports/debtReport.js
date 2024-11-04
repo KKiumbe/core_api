@@ -39,11 +39,12 @@ async function getCustomersWithDebtReport(req, res) {
     const groupedByCollectionDay = customersWithHighDebt.reduce((acc, customer) => {
       const day = customer.garbageCollectionDay;
       if (!acc[day]) {
-        acc[day] = { count: 0, customers: [], totalClosingBalance: 0 }; // Initialize total closing balance
+        acc[day] = { count: 0, customers: [], totalClosingBalance: 0, monthlyTotal: 0 }; // Initialize totals
       }
       acc[day].count += 1;
       acc[day].customers.push(customer);
       acc[day].totalClosingBalance += customer.closingBalance; // Accumulate the total closing balance
+      acc[day].monthlyTotal += customer.monthlyCharge; // Accumulate the monthly charges
       return acc;
     }, {});
 
@@ -94,15 +95,15 @@ function generatePDF(groupedByCollectionDay, filePath) {
     doc.moveDown();
 
     // Loop through each collection day group
-    for (const [day, { count, customers, totalClosingBalance }] of Object.entries(groupedByCollectionDay)) {
+    for (const [day, { count, customers, totalClosingBalance, monthlyTotal }] of Object.entries(groupedByCollectionDay)) {
       doc.fontSize(16).text(`Collection Day: ${day} (Total Customers: ${count})`, { underline: true });
       doc.moveDown();
 
-      // Add header for the table
+      // Add header for the table with adjusted gaps for the columns
       doc.fontSize(12).text('Name', 50, doc.y, { continued: true });
       doc.text('Phone Number', 200, doc.y, { continued: true });
       doc.text('Closing Balance', 350, doc.y, { continued: true });
-      doc.text('Monthly Charge', 480, doc.y );
+      doc.text('Monthly Charge', 460, doc.y); // Adjusted position to fit within the page
       doc.moveDown();
 
       // Add a horizontal line below the header
@@ -117,14 +118,16 @@ function generatePDF(groupedByCollectionDay, filePath) {
           .text(`${customer.firstName} ${customer.lastName}`, 50, doc.y, { continued: true });
         doc.text(customer.phoneNumber, 200, doc.y, { continued: true });
         doc.text(customer.closingBalance.toFixed(2), 350, doc.y, { continued: true });
-        doc.text(customer.monthlyCharge.toFixed(2), 480, doc.y ); // Display closing balance
+        doc.text(customer.monthlyCharge.toFixed(2), 460, doc.y); // Adjusted position
         doc.moveDown(); // Add some spacing between customers
       });
 
-      // Add total closing balance for the collection day
+      // Add total closing balance and monthly total for the collection day
       doc.moveDown();
       doc.fontSize(12).text(`Total Closing Balance for this Collection Day: ${totalClosingBalance.toFixed(2)}`, 50, doc.y);
-      doc.moveDown(); // Add space after the total closing balance
+      doc.moveDown();
+      doc.fontSize(12).text(`Total Monthly Charges for this Collection Day: ${monthlyTotal.toFixed(2)}`, 50, doc.y);
+      doc.moveDown(); // Add space after the totals
 
       // Add a space between collection days
       doc.moveDown();
