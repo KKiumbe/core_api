@@ -2,6 +2,7 @@
 const express = require('express');
 const { getCustomersWithDebtReport } = require('../../controller/reports/debtReport.js');
 const { getAllActiveCustomersReport } = require('../../controller/reports/allCustomers.js');
+const { downloadInvoice } = require('../../controller/reports/invoicePDFGen.js');
 const router = express.Router();
 
 // Define the route for the debt report
