@@ -8,4 +8,11 @@ const router = express.Router();
 router.get('/reports/customers-debt', getCustomersWithDebtReport);
 router.get('/reports/customers', getAllActiveCustomersReport);
 
+
+
+router.get('/download-invoice/:invoiceId', downloadInvoice);
+
+
+
+
 module.exports = router;
