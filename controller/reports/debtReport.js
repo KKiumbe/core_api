@@ -80,13 +80,13 @@ function generatePDF(groupedByCollectionDay, filePath) {
       .fontSize(20)
       .text('TAQa MALI ', 160, 50) // Position name next to logo
       .fontSize(10)
-      .text('TAQA MALI,KISERIAN,NGONG,RONGAI,MATASIA,', 160, 80)
-    
+      .text('TAQA MALI, KISERIAN, NGONG, RONGAI, MATASIA,', 160, 80)
       .fontSize(10)
-      .text('For all the inqueries, Call  0726594923 , We help you Conserve and Protect the environment', 160, 110)
-      .moveDown(); 
-    // Add a divider line after the header
-    doc.moveTo(50, 120).lineTo(550, 150).stroke();
+      .text('For all the inquiries, Call 0726594923, We help you Conserve and Protect the environment', 160, 110)
+      .moveDown();
+
+    // Add a straight divider line after the header
+    doc.moveTo(50, 120).lineTo(550, 120).stroke();
 
     // Title for the report
     doc.fontSize(18).text('Customers with Outstanding Debt Report', { align: 'center' });
@@ -99,7 +99,9 @@ function generatePDF(groupedByCollectionDay, filePath) {
 
       // Loop over customers in this collection day group
       customers.forEach((customer) => {
-        doc.fontSize(14).fillColor('#333').text(`Customer: ${customer.firstName} ${customer.lastName}, Phone: ${customer.phoneNumber}, Monthly Charge: ${customer.monthlyCharge.toFixed(2)}, Closing Balance: ${customer.closingBalance.toFixed(2)}`);
+        // Include customer details in one line
+        doc.fontSize(14).fillColor('#333')
+          .text(`Customer: ${customer.firstName} ${customer.lastName}, Phone: ${customer.phoneNumber}, Monthly Charge: ${customer.monthlyCharge.toFixed(2)}, Closing Balance: ${customer.closingBalance.toFixed(2)}`);
         doc.moveDown(); // Add some spacing between customers
       });
 
