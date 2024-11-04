@@ -96,11 +96,11 @@ function generatePDF(groupedByCollectionDay, filePath) {
 
     // Loop through each collection day group
     for (const [day, { count, customers, totalClosingBalance, monthlyTotal }] of Object.entries(groupedByCollectionDay)) {
-      doc.fontSize(16).text(`Collection Day: ${day} (Total Customers: ${count})`, { underline: true });
+      doc.fontSize(12).text(`Collection Day: ${day} (Total Customers: ${count})`, { underline: true });
       doc.moveDown();
 
       // Add header for the table with closer gaps for the columns
-      doc.fontSize(12).text('Name', 50, doc.y, { continued: true });
+      doc.fontSize(10).text('Name', 50, doc.y, { continued: true });
       doc.text('Phone Number', 150, doc.y, { continued: true }); // Reduced gap
       doc.text('Closing Balance', 300, doc.y, { continued: true }); // Reduced gap
       doc.text('Monthly Charge', 410, doc.y); // Adjusted position
