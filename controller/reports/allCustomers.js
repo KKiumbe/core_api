@@ -74,7 +74,7 @@ function generatePDF(groupedByCollectionDay, filePath) {
       .fontSize(20)
       .text('TAQa MALI ', 160, 50) // Position name next to logo
       .fontSize(10)
-      .text('TAQA MALI, KISERIAN, NGONG, RONGAI, MATASIA,', 160, 80)
+      .text('KISERIAN, NGONG, RONGAI, MATASIA,', 160, 80)
       .fontSize(10)
       .text('For all the inquiries, Call 0726594923, We help you Conserve and Protect the environment', 160, 110)
       .moveDown();
@@ -92,10 +92,10 @@ function generatePDF(groupedByCollectionDay, filePath) {
       doc.moveDown();
 
       // Add header for the table with closer gaps for the columns
-      doc.fontSize(12).text('Name', 50, doc.y, { continued: true });
-      doc.text('Phone Number', 150, doc.y, { continued: true }); // Reduced gap
-      doc.text('Closing Balance', 300, doc.y, { continued: true }); // Reduced gap
-      doc.text('Monthly Charge', 410, doc.y); // Adjusted position
+      doc.fontSize(10).text('Name', 50, doc.y, { continued: true });
+      doc.text('Phone', 150, doc.y, { continued: true }); // Reduced gap
+      doc.text('Balance', 300, doc.y, { continued: true }); // Reduced gap
+      doc.text('MonthlyCharge', 410, doc.y); // Adjusted position
       doc.moveDown();
 
       // Add a horizontal line below the header
@@ -124,7 +124,7 @@ function generatePDF(groupedByCollectionDay, filePath) {
           }
 
           // Write the first line of the name
-          doc.fontSize(12)
+          doc.fontSize(10)
             .fillColor('#333')
             .text(line1.trim(), 50, doc.y, { continued: true });
 
