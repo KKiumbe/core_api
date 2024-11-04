@@ -99,11 +99,11 @@ function generatePDF(groupedByCollectionDay, filePath) {
       doc.fontSize(16).text(`Collection Day: ${day} (Total Customers: ${count})`, { underline: true });
       doc.moveDown();
 
-      // Add header for the table with adjusted gaps for the columns
+      // Add header for the table with closer gaps for the columns
       doc.fontSize(12).text('Name', 50, doc.y, { continued: true });
-      doc.text('Phone Number', 200, doc.y, { continued: true });
-      doc.text('Closing Balance', 350, doc.y, { continued: true });
-      doc.text('Monthly Charge', 460, doc.y); // Adjusted position to fit within the page
+      doc.text('Phone Number', 150, doc.y, { continued: true }); // Reduced gap
+      doc.text('Closing Balance', 300, doc.y, { continued: true }); // Reduced gap
+      doc.text('Monthly Charge', 410, doc.y); // Adjusted position
       doc.moveDown();
 
       // Add a horizontal line below the header
@@ -113,12 +113,12 @@ function generatePDF(groupedByCollectionDay, filePath) {
       // Loop over customers in this collection day group
       customers.forEach((customer) => {
         // Include customer details in a tabular format
-        doc.fontSize(12)
+        doc.fontSize(10)
           .fillColor('#333')
           .text(`${customer.firstName} ${customer.lastName}`, 50, doc.y, { continued: true });
-        doc.text(customer.phoneNumber, 200, doc.y, { continued: true });
-        doc.text(customer.closingBalance.toFixed(2), 350, doc.y, { continued: true });
-        doc.text(customer.monthlyCharge.toFixed(2), 460, doc.y); // Adjusted position
+        doc.text(customer.phoneNumber, 150, doc.y, { continued: true }); // Reduced gap
+        doc.text(customer.closingBalance.toFixed(2), 300, doc.y, { continued: true }); // Reduced gap
+        doc.text(customer.monthlyCharge.toFixed(2), 410, doc.y); // Adjusted position
         doc.moveDown(); // Add some spacing between customers
       });
 
