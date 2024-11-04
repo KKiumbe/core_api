@@ -129,8 +129,8 @@ function generatePDF(groupedByCollectionDay, filePath) {
             .text(line1.trim(), 50, doc.y, { continued: true });
 
           // Adjust Y position for the second line
-          doc.moveDown();
-          // Write the second line of the name
+          doc.moveDown(); // Move down for the next line
+          // Write the second line of the name at the start of the line
           doc.text(line2.trim(), 50, doc.y, { continued: true });
         } else {
           // Include customer details in a tabular format if within width
