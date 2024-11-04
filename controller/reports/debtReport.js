@@ -125,6 +125,7 @@ function generatePDF(groupedByCollectionDay, filePath) {
       doc.moveDown();
       doc.fontSize(12).text(`Total Closing Balance for ${day}: ${totalClosingBalance.toFixed(2)}`, { align: 'right' });
       doc.moveDown();
+      
       // Add a space between collection days
       doc.moveDown();
     }
