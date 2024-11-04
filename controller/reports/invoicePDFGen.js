@@ -55,14 +55,12 @@ async function generateInvoicePDF(invoiceId) {
 
     // Invoice Details
     doc.fontSize(12)
-    
       .text(`Invoice Date: ${invoice.invoicePeriod.toDateString()}`, { align: 'left' })
       .text(`Customer: ${invoice.customer.firstName} ${invoice.customer.lastName}`, { align: 'left' })
       .moveDown();
 
-    // Add opening balance and invoice amount
+    // Add opening balance
     doc.text(`Previous Arrears (Opening Balance): KSH${openingBalance.toFixed(2)}`, { align: 'left' })
-    
       .moveDown();
 
     // Add table headers for invoice items
@@ -77,8 +75,8 @@ async function generateInvoicePDF(invoiceId) {
 
     // Add each invoice item
     invoice.items.forEach(item => {
-      doc.text(item.description, 50, doc.y, { width: 150, continued: true })
-        .text(item.quantity.toString(), 300, doc.y, { width: 50, continued: true })
+      doc.text(item.description, 50, doc.y, { width: 200, continued: true })
+        .text(item.quantity.toString(), 300, doc.y, { width: 100, continued: true })
         .text(`KSH${item.amount.toFixed(2)}`, 400, doc.y, { width: 100, continued: true })
         .moveDown();
     });
