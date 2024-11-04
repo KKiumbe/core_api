@@ -117,11 +117,12 @@ function generatePDF(groupedByCollectionDay, filePath) {
           .text(`${customer.firstName} ${customer.lastName}`, 50, doc.y, { continued: true });
         doc.text(customer.phoneNumber, 200, doc.y, { continued: true });
         doc.text(customer.monthlyCharge.toFixed(2), 350, doc.y, { continued: true });
-        doc.text(customer.closingBalance.toFixed(2), 480, doc.y);
+        doc.text(customer.closingBalance.toFixed(2), 480, doc.y); // Display closing balance
         doc.moveDown(); // Add some spacing between customers
       });
 
       // Add total closing balance for the collection day
+      doc.moveDown();
       doc.fontSize(12).text(`Total Closing Balance for this Collection Day: ${totalClosingBalance.toFixed(2)}`, 50, doc.y);
       doc.moveDown(); // Add space after the total closing balance
 
