@@ -70,7 +70,7 @@ async function generateInvoicePDF(invoiceId) {
       .moveDown();
 
     // Add table headers for invoice items
-    doc.text('Description', 50, doc.y, { width: 200, continued: true })
+    doc.text('Description', 50, doc.y, { width: 150, continued: true })
       .text('Quantity', 250, doc.y, { width: 50, continued: true })
       .text('Amount', 330, doc.y, { width: 100, continued: true })
       .moveDown();
@@ -81,9 +81,9 @@ async function generateInvoicePDF(invoiceId) {
 
     // Add each invoice item
     invoice.items.forEach(item => {
-      doc.text(item.description, 0, doc.y, { width: 200, continued: true })
-        .text(item.quantity.toString(), 210, doc.y, { width: 50, continued: true })
-        .text(`KSH${item.amount.toFixed(2)}`, 330, doc.y, { width: 100, continued: true })
+      doc.text(item.description, 30, doc.y, { width: 150, continued: true })
+        .text(item.quantity.toString(), 200, doc.y, { width: 50, continued: true })
+        .text(`KSH${item.amount.toFixed(2)}`, 260, doc.y, { width: 100, continued: true })
         .moveDown();
     });
 
