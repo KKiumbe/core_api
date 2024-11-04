@@ -77,8 +77,8 @@ async function generateInvoicePDF(invoiceId) {
 
     // Add each invoice item
     invoice.items.forEach(item => {
-      doc.text(item.description, 50, doc.y, { width: 250, continued: true })
-        .text(item.quantity.toString(), 300, doc.y, { width: 100, continued: true })
+      doc.text(item.description, 50, doc.y, { width: 150, continued: true })
+        .text(item.quantity.toString(), 300, doc.y, { width: 50, continued: true })
         .text(`KSH${item.amount.toFixed(2)}`, 400, doc.y, { width: 100, continued: true })
         .moveDown();
     });
@@ -90,7 +90,7 @@ async function generateInvoicePDF(invoiceId) {
 
     // Add the closing balance at the end in bold
     doc.moveDown();
-    doc.fontSize(12).font('Helvetica-Bold').text(`Closing Balance: KSH${closingBalance.toFixed(2)}`, { align: 'left' });
+    doc.fontSize(12).font('Helvetica-Bold').text(`Total Balance: KSH${closingBalance.toFixed(2)}`, { align: 'left' });
 
     // Finalize PDF
     doc.end();
