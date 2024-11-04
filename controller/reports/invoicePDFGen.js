@@ -82,8 +82,8 @@ async function generateInvoicePDF(invoiceId) {
     // Add each invoice item
     invoice.items.forEach(item => {
       doc.text(item.description, 50, doc.y, { width: 150, continued: true })
-        .text(item.quantity.toString(), 250, doc.y, { width: 50, continued: true })
-        .text(`KSH${item.amount.toFixed(2)}`, 330, doc.y, { width: 100, continued: true })
+        .text(item.quantity.toString(), 270, doc.y, { width: 50, continued: true })
+        .text(`KSH${item.amount.toFixed(2)}`, 350, doc.y, { width: 100, continued: true })
         .moveDown();
     });
 
