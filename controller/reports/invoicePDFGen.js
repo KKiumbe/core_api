@@ -55,19 +55,18 @@ async function generateInvoicePDF(invoiceId) {
 
     // Invoice Details
     doc.fontSize(12)
-      .text(`Invoice Number: ${invoice.invoiceNumber}`, { align: 'left' })
+    
       .text(`Invoice Date: ${invoice.invoicePeriod.toDateString()}`, { align: 'left' })
       .text(`Customer: ${invoice.customer.firstName} ${invoice.customer.lastName}`, { align: 'left' })
       .moveDown();
 
-    // Add opening balance, invoice amount, and closing balance
+    // Add opening balance and invoice amount
     doc.text(`Previous Arrears (Opening Balance): KSH${openingBalance.toFixed(2)}`, { align: 'left' })
-      .text(`Invoice Amount: KSH${invoiceAmount.toFixed(2)}`, { align: 'left' })
-      .text(`Closing Balance: KSH${closingBalance.toFixed(2)}`, { align: 'left' })
+    
       .moveDown();
 
     // Add table headers for invoice items
-    doc.text('Description', 50, doc.y, { width: 250, continued: true })
+    doc.text('Description', 50, doc.y, { width: 200, continued: true })
       .text('Quantity', 300, doc.y, { width: 100, continued: true })
       .text('Amount', 400, doc.y, { width: 100, continued: true })
       .moveDown();
@@ -88,6 +87,10 @@ async function generateInvoicePDF(invoiceId) {
     const totalAmount = invoice.items.reduce((total, item) => total + item.amount * item.quantity, 0);
     doc.moveDown();
     doc.fontSize(12).text(`Total: KSH${totalAmount.toFixed(2)}`, 50, doc.y);
+
+    // Add the closing balance at the end in bold
+    doc.moveDown();
+    doc.fontSize(12).font('Helvetica-Bold').text(`Closing Balance: KSH${closingBalance.toFixed(2)}`, { align: 'left' });
 
     // Finalize PDF
     doc.end();
