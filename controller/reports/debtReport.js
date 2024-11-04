@@ -88,7 +88,7 @@ function generatePDF(groupedByCollectionDay, filePath) {
       .fontSize(20)
       .text('TAQa MALI ', 160, 50) // Position name next to logo
       .fontSize(10)
-      .text('TAQA MALI,KISERIAN,NGONG,RONGAI,MATASIA, 0726594923 , We help you Conserve and Protect the enviroment', 160, 80)
+      .text('TAQA MALI,KISERIAN,NGONG,RONGAI,MATASIA, 0726594923 , We help you Conserve and Protect the environment', 160, 80)
       .moveDown();
 
     // Add a divider line after the header
@@ -105,11 +105,9 @@ function generatePDF(groupedByCollectionDay, filePath) {
 
       // Loop over customers in this collection day group
       customers.forEach((customer) => {
-        doc.fontSize(14).fillColor('#333').text(`Customer: ${customer.firstName} ${customer.lastName}`);
-        doc.fontSize(12).fillColor('#555').text(`Phone: ${customer.phoneNumber}`);
-        doc.text(`Email: ${customer.email || 'N/A'}`);
-        doc.text(`Total Debt (Closing Balance): ${customer.closingBalance.toFixed(2)}`);
-        doc.text(`Monthly Charge: ${customer.monthlyCharge.toFixed(2)}`);
+        // Update to display customer name, phone number, monthly charge, and closing balance in one line
+        doc.fontSize(14).fillColor('#333')
+          .text(`Name: ${customer.firstName} ${customer.lastName}, Phone: ${customer.phoneNumber}, Monthly Charge: ${customer.monthlyCharge.toFixed(2)}, Closing Balance: ${customer.closingBalance.toFixed(2)}`);
         doc.moveDown();
 
         // Add a header row for the invoices table
