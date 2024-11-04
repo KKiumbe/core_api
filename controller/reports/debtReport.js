@@ -101,9 +101,9 @@ function generatePDF(groupedByCollectionDay, filePath) {
 
       // Add header for the table with closer gaps for the columns
       doc.fontSize(10).text('Name', 50, doc.y, { continued: true });
-      doc.text('Phone Number', 150, doc.y, { continued: true }); // Reduced gap
-      doc.text('Closing Balance', 300, doc.y, { continued: true }); // Reduced gap
-      doc.text('Monthly Charge', 410, doc.y); // Adjusted position
+      doc.text('PhoneNumber', 150, doc.y, { continued: true }); // Reduced gap
+      doc.text('Balance', 300, doc.y, { continued: true }); // Reduced gap
+      doc.text('MonthlyCharge', 410, doc.y); // Adjusted position
       doc.moveDown();
 
       // Add a horizontal line below the header
