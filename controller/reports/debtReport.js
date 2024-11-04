@@ -22,15 +22,7 @@ async function getCustomersWithDebtReport(req, res) {
         email: true,
         monthlyCharge: true,
         closingBalance: true, // Include closing balance for total debt
-        garbageCollectionDay: true, // Include collection day for grouping
-        invoices: {
-          where: { status: 'UNPAID' },
-          select: {
-            invoiceNumber: true,
-            invoiceAmount: true,
-            amountPaid: true
-          }
-        }
+        garbageCollectionDay: true // Include collection day for grouping
       }
     });
 
@@ -88,11 +80,13 @@ function generatePDF(groupedByCollectionDay, filePath) {
       .fontSize(20)
       .text('TAQa MALI ', 160, 50) // Position name next to logo
       .fontSize(10)
-      .text('TAQA MALI,KISERIAN,NGONG,RONGAI,MATASIA, 0726594923 , We help you Conserve and Protect the environment', 160, 80)
-      .moveDown();
-
+      .text('TAQA MALI,KISERIAN,NGONG,RONGAI,MATASIA,', 160, 80)
+    
+      .fontSize(10)
+      .text('For all the inqueries, Call  0726594923 , We help you Conserve and Protect the environment', 160, 110)
+      .moveDown(); 
     // Add a divider line after the header
-    doc.moveTo(50, 120).lineTo(550, 120).stroke();
+    doc.moveTo(50, 120).lineTo(550, 150).stroke();
 
     // Title for the report
     doc.fontSize(18).text('Customers with Outstanding Debt Report', { align: 'center' });
@@ -105,32 +99,8 @@ function generatePDF(groupedByCollectionDay, filePath) {
 
       // Loop over customers in this collection day group
       customers.forEach((customer) => {
-        // Update to display customer name, phone number, monthly charge, and closing balance in one line
-        doc.fontSize(14).fillColor('#333')
-          .text(`Name: ${customer.firstName} ${customer.lastName}, Phone: ${customer.phoneNumber}, Monthly Charge: ${customer.monthlyCharge.toFixed(2)}, Closing Balance: ${customer.closingBalance.toFixed(2)}`);
-        doc.moveDown();
-
-        // Add a header row for the invoices table
-        doc.fontSize(12).fillColor('#000').text('Invoice Number', 50, doc.y, { continued: true });
-        doc.text('Amount', 150, doc.y, { continued: true });
-        doc.text('Amount Paid', 250, doc.y, { continued: true });
-        doc.text('Outstanding Balance', 350, doc.y);
-        doc.moveDown();
-
-        // Populate each unpaid invoice for the customer
-        customer.invoices.forEach((invoice) => {
-          const outstandingBalance = invoice.invoiceAmount - invoice.amountPaid;
-          doc.fontSize(10).text(invoice.invoiceNumber, 50, doc.y, { continued: true });
-          doc.text(invoice.invoiceAmount.toFixed(2), 150, doc.y, { continued: true });
-          doc.text(invoice.amountPaid.toFixed(2), 250, doc.y, { continued: true });
-          doc.text(outstandingBalance.toFixed(2), 350, doc.y);
-          doc.moveDown();
-        });
-
-        // Add some spacing between customers
-        doc.moveDown();
-        doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke(); // Add a divider line after each customer
-        doc.moveDown();
+        doc.fontSize(14).fillColor('#333').text(`Customer: ${customer.firstName} ${customer.lastName}, Phone: ${customer.phoneNumber}, Monthly Charge: ${customer.monthlyCharge.toFixed(2)}, Closing Balance: ${customer.closingBalance.toFixed(2)}`);
+        doc.moveDown(); // Add some spacing between customers
       });
 
       // Add a space between collection days
