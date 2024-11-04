@@ -97,11 +97,26 @@ function generatePDF(groupedByCollectionDay, filePath) {
       doc.fontSize(16).text(`Collection Day: ${day} (Total Customers: ${count})`, { underline: true });
       doc.moveDown();
 
+      // Add header for the table
+      doc.fontSize(12).text('Name', 50, doc.y, { continued: true });
+      doc.text('Phone Number', 200, doc.y, { continued: true });
+      doc.text('Monthly Charge', 350, doc.y, { continued: true });
+      doc.text('Closing Balance', 480, doc.y);
+      doc.moveDown();
+
+      // Add a horizontal line below the header
+      doc.moveTo(50, doc.y - 5).lineTo(550, doc.y - 5).stroke();
+      doc.moveDown();
+
       // Loop over customers in this collection day group
       customers.forEach((customer) => {
-        // Include customer details in one line
-        doc.fontSize(14).fillColor('#333')
-          .text(`Customer: ${customer.firstName} ${customer.lastName}, Phone: ${customer.phoneNumber}, Monthly Charge: ${customer.monthlyCharge.toFixed(2)}, Closing Balance: ${customer.closingBalance.toFixed(2)}`);
+        // Include customer details in a tabular format
+        doc.fontSize(12)
+          .fillColor('#333')
+          .text(`${customer.firstName} ${customer.lastName}`, 50, doc.y, { continued: true });
+        doc.text(customer.phoneNumber, 200, doc.y, { continued: true });
+        doc.text(customer.monthlyCharge.toFixed(2), 350, doc.y, { continued: true });
+        doc.text(customer.closingBalance.toFixed(2), 480, doc.y);
         doc.moveDown(); // Add some spacing between customers
       });
 
