@@ -1,5 +1,3 @@
-// invoicePDFGenerator.js
-
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
@@ -20,6 +18,11 @@ async function generateInvoicePDF(invoiceId) {
 
     if (!invoice) throw new Error('Invoice not found');
 
+    // Calculate balances
+    const closingBalance = invoice.customer.closingBalance; // directly from customer
+    const invoiceAmount = invoice.invoiceAmount; // invoice amount from the invoice
+    const openingBalance = closingBalance - invoiceAmount; // opening balance calculation
+
     const doc = new PDFDocument({ margin: 50 });
     const pdfPath = path.join(__dirname, 'invoices', `invoice-${invoiceId}.pdf`);
 
@@ -34,9 +37,9 @@ async function generateInvoicePDF(invoiceId) {
 
     // Company Details with Logo
     const logoPath = path.join(__dirname, '..', 'assets', 'icon.png'); // Ensure this path is correct
-    doc.image(logoPath, 50, 45, { width: 100 }) // Adjust width and position as needed
+    doc.image(logoPath, 50, 45, { width: 100 })
       .fontSize(20)
-      .text('TAQA MALI', 160, 50) // Adjust company name position next to the logo
+      .text('TAQA MALI', 160, 50)
       .fontSize(10)
       .text('KISERIAN.NGONG.RONGAI.MATASIA', 160, 80)
       .text('Phone: 0726594923', 160, 110)
@@ -55,6 +58,12 @@ async function generateInvoicePDF(invoiceId) {
       .text(`Invoice Number: ${invoice.invoiceNumber}`, { align: 'left' })
       .text(`Invoice Date: ${invoice.invoicePeriod.toDateString()}`, { align: 'left' })
       .text(`Customer: ${invoice.customer.firstName} ${invoice.customer.lastName}`, { align: 'left' })
+      .moveDown();
+
+    // Add opening balance, invoice amount, and closing balance
+    doc.text(`Previous Arrears (Opening Balance): KSH${openingBalance.toFixed(2)}`, { align: 'left' })
+      .text(`Invoice Amount: KSH${invoiceAmount.toFixed(2)}`, { align: 'left' })
+      .text(`Closing Balance: KSH${closingBalance.toFixed(2)}`, { align: 'left' })
       .moveDown();
 
     // Add table headers for invoice items
