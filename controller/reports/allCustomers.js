@@ -104,10 +104,42 @@ function generatePDF(groupedByCollectionDay, filePath) {
 
       // Loop over customers in this collection day group
       customers.forEach((customer) => {
-        // Include customer details in a tabular format
-        doc.fontSize(12)
-          .fillColor('#333')
-          .text(`${customer.firstName} ${customer.lastName}`, 50, doc.y, { continued: true });
+        const fullName = `${customer.firstName} ${customer.lastName}`;
+        const nameWidth = doc.widthOfString(fullName);
+        const maxWidth = 120; // Maximum width for the name column
+
+        // Split name into two lines if it exceeds maxWidth
+        if (nameWidth > maxWidth) {
+          const names = fullName.split(' ');
+          let line1 = '';
+          let line2 = '';
+
+          // Build the first line up to the maximum width
+          for (const name of names) {
+            if (doc.widthOfString(line1 + name + ' ') < maxWidth) {
+              line1 += name + ' ';
+            } else {
+              line2 += name + ' ';
+            }
+          }
+
+          // Write the first line of the name
+          doc.fontSize(12)
+            .fillColor('#333')
+            .text(line1.trim(), 50, doc.y, { continued: true });
+
+          // Adjust Y position for the second line
+          doc.moveDown();
+          // Write the second line of the name
+          doc.text(line2.trim(), 50, doc.y, { continued: true });
+        } else {
+          // Include customer details in a tabular format if within width
+          doc.fontSize(12)
+            .fillColor('#333')
+            .text(fullName, 50, doc.y, { continued: true });
+        }
+
+        // Write other customer details
         doc.text(customer.phoneNumber, 150, doc.y, { continued: true }); // Reduced gap
         doc.text(customer.closingBalance.toFixed(2), 300, doc.y, { continued: true }); // Reduced gap
         doc.text(customer.monthlyCharge.toFixed(2), 410, doc.y); // Adjusted position
