@@ -5,5 +5,6 @@ const router = express.Router();
 
 // Define the route for the debt report
 router.get('/reports/customers-debt', getCustomersWithDebtReport);
+router.get('/reports/customers', getCustomersWithDebtReport);
 
 module.exports = router;
