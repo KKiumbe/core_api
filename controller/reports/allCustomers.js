@@ -134,7 +134,7 @@ function generatePDF(groupedByCollectionDay, filePath) {
           doc.text(line2.trim(), 50, doc.y, { continued: true });
         } else {
           // Include customer details in a tabular format if within width
-          doc.fontSize(12)
+          doc.fontSize(10)
             .fillColor('#333')
             .text(fullName, 50, doc.y, { continued: true });
         }
