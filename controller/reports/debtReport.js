@@ -39,11 +39,11 @@ async function getCustomersWithDebtReport(req, res) {
     const groupedByCollectionDay = customersWithHighDebt.reduce((acc, customer) => {
       const day = customer.garbageCollectionDay;
       if (!acc[day]) {
-        acc[day] = { count: 0, totalClosingBalance: 0, customers: [] };
+        acc[day] = { count: 0, customers: [], totalClosingBalance: 0 }; // Initialize total closing balance
       }
       acc[day].count += 1;
-      acc[day].totalClosingBalance += customer.closingBalance; // Sum closing balance
       acc[day].customers.push(customer);
+      acc[day].totalClosingBalance += customer.closingBalance; // Accumulate the total closing balance
       return acc;
     }, {});
 
@@ -94,7 +94,7 @@ function generatePDF(groupedByCollectionDay, filePath) {
     doc.moveDown();
 
     // Loop through each collection day group
-    for (const [day, { count, totalClosingBalance, customers }] of Object.entries(groupedByCollectionDay)) {
+    for (const [day, { count, customers, totalClosingBalance }] of Object.entries(groupedByCollectionDay)) {
       doc.fontSize(16).text(`Collection Day: ${day} (Total Customers: ${count})`, { underline: true });
       doc.moveDown();
 
@@ -122,10 +122,9 @@ function generatePDF(groupedByCollectionDay, filePath) {
       });
 
       // Add total closing balance for the collection day
-      doc.moveDown();
-      doc.fontSize(12).text(`Total Closing Balance for ${day}: ${totalClosingBalance.toFixed(2)}`, { align: 'right' });
-      doc.moveDown();
-      
+      doc.fontSize(12).text(`Total Closing Balance for this Collection Day: ${totalClosingBalance.toFixed(2)}`, 50, doc.y);
+      doc.moveDown(); // Add space after the total closing balance
+
       // Add a space between collection days
       doc.moveDown();
     }
