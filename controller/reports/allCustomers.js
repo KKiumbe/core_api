@@ -86,16 +86,22 @@ function generatePDF(groupedByCollectionDay, filePath) {
     doc.fontSize(18).text('Weekly Active Customers Report', { align: 'center' });
     doc.moveDown();
 
+    // Define fixed column widths
+    const nameColumnWidth = 150;
+    const phoneColumnWidth = 100;
+    const balanceColumnWidth = 100;
+    const monthlyChargeColumnWidth = 100;
+
     // Loop through each collection day group
     for (const [day, { count, customers, totalClosingBalance, monthlyTotal }] of Object.entries(groupedByCollectionDay)) {
       doc.fontSize(16).text(`Collection Day: ${day} (Total Customers: ${count})`, { underline: true });
       doc.moveDown();
 
-      // Add header for the table with closer gaps for the columns
+      // Add header for the table with fixed column widths
       doc.fontSize(10).text('Name', 50, doc.y, { continued: true });
-      doc.text('Phone', 150, doc.y, { continued: true }); // Reduced gap
-      doc.text('Balance', 300, doc.y, { continued: true }); // Reduced gap
-      doc.text('MonthlyCharge', 410, doc.y); // Adjusted position
+      doc.text('Phone', 50 + nameColumnWidth, doc.y, { continued: true });
+      doc.text('Balance', 50 + nameColumnWidth + phoneColumnWidth, doc.y, { continued: true });
+      doc.text('Monthly Charge', 50 + nameColumnWidth + phoneColumnWidth + balanceColumnWidth, doc.y);
       doc.moveDown();
 
       // Add a horizontal line below the header
@@ -106,7 +112,7 @@ function generatePDF(groupedByCollectionDay, filePath) {
       customers.forEach((customer) => {
         const fullName = `${customer.firstName} ${customer.lastName}`;
         const nameWidth = doc.widthOfString(fullName);
-        const maxWidth = 120; // Maximum width for the name column
+        const maxWidth = nameColumnWidth; // Maximum width for the name column
 
         // Split name into two lines if it exceeds maxWidth
         if (nameWidth > maxWidth) {
@@ -132,6 +138,7 @@ function generatePDF(groupedByCollectionDay, filePath) {
           doc.moveDown(); // Move down for the next line
           // Write the second line of the name at the start of the line
           doc.text(line2.trim(), 50, doc.y, { continued: true });
+          doc.moveDown(); // Add space after multi-line name
         } else {
           // Include customer details in a tabular format if within width
           doc.fontSize(10)
@@ -139,11 +146,11 @@ function generatePDF(groupedByCollectionDay, filePath) {
             .text(fullName, 50, doc.y, { continued: true });
         }
 
-        // Write other customer details
-        doc.text(customer.phoneNumber, 150, doc.y, { continued: true }); // Reduced gap
-        doc.text(customer.closingBalance.toFixed(2), 300, doc.y, { continued: true }); // Reduced gap
-        doc.text(customer.monthlyCharge.toFixed(2), 410, doc.y); // Adjusted position
-        doc.moveDown(); // Add some spacing between customers
+        // Write other customer details with fixed widths
+        doc.text(customer.phoneNumber, 50 + nameColumnWidth, doc.y, { continued: true });
+        doc.text(customer.closingBalance.toFixed(2), 50 + nameColumnWidth + phoneColumnWidth, doc.y, { continued: true });
+        doc.text(customer.monthlyCharge.toFixed(2), 50 + nameColumnWidth + phoneColumnWidth + balanceColumnWidth, doc.y);
+        doc.moveDown(); // Add spacing between customers
       });
 
       // Add total closing balance and monthly total for the collection day
