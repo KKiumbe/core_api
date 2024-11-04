@@ -71,14 +71,14 @@ async function generateInvoicePDF(invoiceId) {
     invoice.items.forEach(item => {
       doc.text(item.description, 50, doc.y, { width: 250, continued: true })
         .text(item.quantity.toString(), 300, doc.y, { width: 100, continued: true })
-        .text(`$${item.amount.toFixed(2)}`, 400, doc.y, { width: 100, continued: true })
+        .text(`KSH${item.amount.toFixed(2)}`, 400, doc.y, { width: 100, continued: true })
         .moveDown();
     });
 
     // Calculate and add the total amount
     const totalAmount = invoice.items.reduce((total, item) => total + item.amount * item.quantity, 0);
     doc.moveDown();
-    doc.fontSize(12).text(`Total: $${totalAmount.toFixed(2)}`, 50, doc.y);
+    doc.fontSize(12).text(`Total: KSH${totalAmount.toFixed(2)}`, 50, doc.y);
 
     // Finalize PDF
     doc.end();
