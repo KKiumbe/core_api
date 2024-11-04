@@ -53,8 +53,14 @@ async function generateInvoicePDF(invoiceId) {
     doc.fontSize(18).text('Invoice', { align: 'center' });
     doc.moveDown();
 
+    // Format the invoice period
+    const invoiceDate = new Date(invoice.invoicePeriod);
+    const options = { month: 'long', year: 'numeric' };
+    const formattedPeriod = invoiceDate.toLocaleDateString('en-US', options);
+
     // Invoice Details
     doc.fontSize(12)
+      .text(`Invoice Period: ${formattedPeriod}`, { align: 'left' })
       .text(`Invoice Date: ${invoice.invoicePeriod.toDateString()}`, { align: 'left' })
       .text(`Customer: ${invoice.customer.firstName} ${invoice.customer.lastName}`, { align: 'left' })
       .moveDown();
@@ -75,9 +81,9 @@ async function generateInvoicePDF(invoiceId) {
 
     // Add each invoice item
     invoice.items.forEach(item => {
-      doc.text(item.description, 50, doc.y, { width: 200, continued: true })
-        .text(item.quantity.toString(), 300, doc.y, { width: 100, continued: true })
-        .text(`KSH${item.amount.toFixed(2)}`, 400, doc.y, { width: 100, continued: true })
+      doc.text(item.description, 20, doc.y, { width: 200, continued: true })
+        .text(item.quantity.toString(), 250, doc.y, { width: 100, continued: true })
+        .text(`KSH${item.amount.toFixed(2)}`, 420, doc.y, { width: 100, continued: true })
         .moveDown();
     });
 
@@ -120,7 +126,7 @@ async function downloadInvoice(req, res) {
         console.error('Error downloading invoice:', err);
         res.status(500).send('Error downloading invoice');
       }
-      
+
       // Optionally delete the file after download
       fs.unlinkSync(pdfPath);
     });
