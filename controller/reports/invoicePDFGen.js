@@ -42,7 +42,7 @@ async function generateInvoicePDF(invoiceId) {
       .text('TAQA MALI', 160, 50)
       .fontSize(10)
       .text('KISERIAN.NGONG.RONGAI.MATASIA', 160, 80)
-      .text('Phone: 0726594923', 160, 110)
+      .text('For inquiries Call: 0726594923', 160, 110)
       .text('Email: ngugisj@gmail.com', 160, 125)
       .moveDown();
 
