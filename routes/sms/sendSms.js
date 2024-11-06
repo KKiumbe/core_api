@@ -197,10 +197,10 @@ router.post('/send-bills', async (req, res) => {
 
         // Prepare messages for each customer
         const messages = activeCustomers.map(customer => {
-            const invoices = customer.invoices;
+            //const invoices = customer.invoices;
 
             // Use the latest unpaid invoice amount for the current invoice
-            const currentInvoice = invoices.length > 0 ? invoices[0].invoiceAmount : 0; // Assume `invoiceAmount` is the field for the invoice amount
+            const currentInvoice = customer.monthlyCharge // Assume `invoiceAmount` is the field for the invoice amount
             const currentBalance = customer.closingBalance;
 
             // Prepare the message based on the balance
@@ -213,7 +213,7 @@ router.post('/send-bills', async (req, res) => {
             if (currentBalance < 0) {
                 // Handle overpayment
                 const overpaymentAmount = Math.abs(currentBalance);
-                message = `Dear ${customer.firstName}, you have an overpayment of KES ${overpaymentAmount}.Help us server you better by using Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923  Thank you for always being a royal customer. !`;
+                message = `Dear ${customer.firstName}, Your ${currentMonth} bill is KES ${currentInvoice}.You have an overpayment of KES ${overpaymentAmount}.Help us server you better by using Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923  Thank you for always being a royal customer. !`;
             } else {
                 // Calculate previous balance if applicable
                 const previousBalance = currentBalance - currentInvoice;
@@ -336,19 +336,19 @@ router.post('/send-bill', async (req, res) => {
         const currentMonth = getCurrentMonthName();
 
         // Use the latest unpaid invoice amount for the current invoice
-        const currentInvoice = customer.invoices.length > 0 ? customer.invoices[0].invoiceAmount : 0; // Assume `invoiceAmount` is the field for the invoice amount
+        const currentInvoice = customer.monthlyCharge; // Assume `invoiceAmount` is the field for the invoice amount
         const currentBalance = customer.closingBalance;
 
         // Construct the message based on the closing balance
         let message;
 
         if (currentBalance < 0) { // Handle overpayment case
-            message = `Hello ${customer.firstName}, you have an overpayment of KES ${Math.abs(currentBalance)}. /Help us server you better by using Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923.`;
+            message = `Dear ${customer.firstName}, you have an overpayment of KES ${Math.abs(currentBalance)}. Help us server you better by using Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923.`;
         } else {
             // Previous balance is the sum of all previous unpaid invoices (excluding the latest one)
             const previousBalance = currentBalance - currentInvoice;
 
-            message = `Hello ${customer.firstName}, your previous balance for ${currentMonth} is KES ${previousBalance}. Your ${currentMonth} bill is KES ${currentInvoice}. Total balance is KES ${currentBalance}.Help us server you better by always paying on time. Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923.`;
+            message = `Dear ${customer.firstName}, Your ${currentMonth} bill is KES ${currentInvoice}. Total balance is KES ${currentBalance}.Help us server you better by always paying on time. Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923.`;
         }
 
         // Sanitize the phone number
