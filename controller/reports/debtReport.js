@@ -96,7 +96,7 @@ async function getCustomersWithLowBalance(req, res) {
       firstName: true, lastName: true, phoneNumber: true, email: true, monthlyCharge: true, closingBalance: true, garbageCollectionDay: true
     }
   });
-  const filteredCustomers = customers.filter(c => c.closingBalance < c.monthlyCharge);
+  const filteredCustomers = customers.filter(c => c.closingBalance <= c.monthlyCharge);
   if (!filteredCustomers.length) return res.status(404).json({ message: "No customers with low balance found." });
   await generateReport(filteredCustomers, 'Low Balance Report', 'low-balance-report', res);
 }
