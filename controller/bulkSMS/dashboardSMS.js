@@ -90,6 +90,7 @@ const sendUnpaidCustomers = async (req, res) => {
                 monthlyCharge: true,
             },
         });
+        //
 
         const unpaidCustomers = activeCustomers.filter(customer => 
             customer.closingBalance >= customer.monthlyCharge * 0.15 // 15% of monthly charge
@@ -97,7 +98,7 @@ const sendUnpaidCustomers = async (req, res) => {
 
         const customersWithMessages = unpaidCustomers.map(customer => ({
             ...customer,
-            message: `Dear ${customer.firstName}, you have an outstanding balance of ${customer.closingBalance.toFixed(2)}. Please pay your dues.`,
+            message: `Dear ${customer.firstName}, you have an outstanding balance of ${customer.closingBalance.toFixed(2)}. Help us server you better by always paying on time. Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923`,
         }));
 
         const balance = await checkSmsBalance(); // Check balance before sending
@@ -137,7 +138,7 @@ const sendLowBalanceCustomers = async (req, res) => {
 
         const customersWithMessages = lowBalanceCustomers.map(customer => ({
             ...customer,
-            message: `Dear ${customer.firstName}, your current balance is low at ${customer.closingBalance.toFixed(2)}. Please top up soon.`,
+            message: `Dear ${customer.firstName},Your Balance is  ${customer.closingBalance.toFixed(2)}. Help us server you better by always paying on time. Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923.`,
         }));
 
         const balance = await checkSmsBalance(); // Check balance before sending
@@ -157,7 +158,8 @@ const sendLowBalanceCustomers = async (req, res) => {
         return res.status(500).json({ message: 'Failed to send SMS to low balance customers.' });
     }
 };
-
+//Help us server you better by always paying on time. Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923`;
+const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber);
 // Function to send SMS to high balance customers
 const sendHighBalanceCustomers = async (req, res) => {
     try {
@@ -177,7 +179,7 @@ const sendHighBalanceCustomers = async (req, res) => {
 
         const customersWithMessages = highBalanceCustomers.map(customer => ({
             ...customer,
-            message: `Dear ${customer.firstName}, thank you for your timely payments! Your current balance is ${customer.closingBalance.toFixed(2)}.`,
+            message: `Dear ${customer.firstName}, Your current balance is ${customer.closingBalance.toFixed(2)},which is alot, Help us server you better by always paying on time. Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923`,
         }));
 
         const balance = await checkSmsBalance(); // Check balance before sending

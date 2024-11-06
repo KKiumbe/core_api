@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { sendSMS } = require('../../routes/sms/sms');
 const prisma = new PrismaClient();
 
 function generateReceiptNumber() {
@@ -21,6 +22,7 @@ const manualCashPayment = async (req, res) => {
     try {
         const customer = await prisma.customer.findUnique({
             where: { id: customerId },
+            select: { phoneNumber: true, firstName: true, closingBalance: true }, // Fetch only necessary fields
         });
 
         if (!customer) {
@@ -68,7 +70,7 @@ const manualCashPayment = async (req, res) => {
             },
         });
 
-        // Step 1: Find unpaid invoices
+        // Step 1: Find unpaid invoices and apply payment
         const invoices = await prisma.invoice.findMany({
             where: { customerId, status: 'UNPAID' },
             orderBy: { createdAt: 'asc' },
@@ -77,7 +79,6 @@ const manualCashPayment = async (req, res) => {
         let remainingAmount = totalAmount;
         const updatedInvoices = [];
 
-        // Step 2: Allocate payment to unpaid invoices
         for (const invoice of invoices) {
             if (remainingAmount <= 0) break;
 
@@ -95,67 +96,54 @@ const manualCashPayment = async (req, res) => {
             remainingAmount -= paymentForInvoice;
         }
 
-        // Step 3: Handle any remaining amount as an overpayment
-        if (remainingAmount > 0) {
-            // Create a new payment record for the overpayment
-            const overpaymentTransactionId = generateTransactionId();
-            const overpaymentPayment = await prisma.payment.create({
-                data: {
-                    amount: remainingAmount,
-                    modeOfPayment: modeOfPayment,
-                    TransactionId: overpaymentTransactionId,
-                    receipted: true,
-                    createdAt: new Date(),
-                },
-            });
+        // Update customer closing balance
+        await prisma.customer.update({
+            where: { id: customerId },
+            data: { closingBalance: newClosingBalance },
+        });
 
-            // Create a receipt for the overpayment
-            const overpaymentReceipt = await prisma.receipt.create({
-                data: {
-                    customerId: customerId,
-                    amount: remainingAmount,
-                    modeOfPayment: modeOfPayment,
-                    receiptNumber: generateReceiptNumber(),
-                    paymentId: overpaymentPayment.id,  // Associate with the new overpayment
-                    paidBy: paidBy,
-                    createdAt: new Date(),
-                },
-            });
+        // SMS Notification message
+        const formattedBalanceMessage = newClosingBalance < 0
+            ? `Your closing balance is an overpayment of KES ${Math.abs(newClosingBalance)}`
+            : `Your closing balance is KES ${newClosingBalance}`;
 
-            // Update the customer's closing balance to reflect the overpayment
-            await prisma.customer.update({
-                where: { id: customerId },
-                data: { closingBalance: newClosingBalance }, // Just reflect the new closing balance without deducting again
-            });
+        const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ${formattedBalanceMessage}. Help us serve you better by Always using Paybill No: 4107197, your phone number as the account number to pay your garbage collection bill. Customer support: 0726594923.`;
+        
+        const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber);
 
-            return res.status(201).json({
-                message: 'Payment and overpayment receipt created successfully.',
-                receipt,
-                overpaymentReceipt,
-                updatedInvoices,
-                newClosingBalance: newClosingBalance, // Show the new closing balance including the overpayment
-            });
-        } else {
-            // Update the customer's closing balance
-            await prisma.customer.update({
-                where: { id: customerId },
-                data: { closingBalance: newClosingBalance },
-            });
+        // Send SMS
+        await sendSMS(sanitisedNumber, message);
+        console.log(`SMS sent to ${sanitisedNumber}: ${message}`);
 
-            return res.status(201).json({
-                message: 'Payment and receipt created successfully.',
-                receipt,
-                updatedPayment,
-                updatedInvoices,
-                newClosingBalance: newClosingBalance,
-            });
-        }
+        res.status(201).json({
+            message: 'Payment and receipt created successfully, SMS notification sent.',
+            receipt,
+            updatedPayment,
+            updatedInvoices,
+            newClosingBalance,
+        });
     } catch (error) {
         console.error('Error creating manual cash payment:', error);
         res.status(500).json({ error: 'Failed to create manual cash payment.', details: error.message });
     }
 };
 
-module.exports = {
-    manualCashPayment,
-};
+// Helper function to format phone number
+function sanitizePhoneNumber(phone) {
+    if (typeof phone !== 'string') {
+        console.error('Invalid phone number format:', phone);
+        return '';
+    }
+
+    if (phone.startsWith('+254')) {
+        return phone.slice(1);
+    } else if (phone.startsWith('0')) {
+        return `254${phone.slice(1)}`;
+    } else if (phone.startsWith('254')) {
+        return phone;
+    } else {
+        return `254${phone}`;
+    }
+}
+
+module.exports = { manualCashPayment };

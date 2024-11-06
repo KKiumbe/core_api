@@ -68,7 +68,7 @@ async function generateBulkBillSmsMessage() {
           ? customer.phoneNumber.slice(1) // If it starts with '+', remove the '+'
           : customer.phoneNumber; // Otherwise, use the number as-is
 
-        const message = `Dear ${customerName}, your ${month} bill is ${currentMonthBill}, your previous balance is ${closingBalance - currentMonthBill}, and your total balance is ${closingBalance}. Pay via Paybill number 89354, account number is your phone number.`;
+        const message = `Dear ${customerName}, your ${month} bill is ${currentMonthBill}, your previous balance is ${closingBalance - currentMonthBill}, and your total balance is ${closingBalance}. Help us server you better by always paying on time. Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923`;
 
         return {
           partnerID: process.env.PARTNER_ID,

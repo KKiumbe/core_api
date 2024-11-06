@@ -112,10 +112,10 @@ async function settleInvoice() {
 
             const finalClosingBalance = newClosingBalance;
             const formattedBalanceMessage = finalClosingBalance < 0
-                ? `Your closing balance is an overpayment of KES ${Math.abs(finalClosingBalance)}`
-                : `Your closing balance is KES ${finalClosingBalance}`;
+                ? `Your Current balance is an overpayment of KES ${Math.abs(finalClosingBalance)}`
+                : `Your Current balance is KES ${finalClosingBalance}`;
 
-            const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. ${formattedBalanceMessage}. Thank you for your payment!`;
+            const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. ${formattedBalanceMessage}. Help us server you better by using Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923`;
             const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber);
 
             await sendSMS(sanitisedNumber, message);
