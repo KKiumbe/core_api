@@ -131,9 +131,56 @@ const uploadCustomers = async (req, res) => {
     });
 };
 
+
+
+const updateCustomersClosingBalance = async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No file uploaded' });
+  }
+
+  const filePath = path.join(uploadsDir, req.file.filename);
+  const updates = [];
+
+  fs.createReadStream(filePath)
+    .pipe(csv())
+    .on('data', (data) => {
+      // Ensure each row has phoneNumber and closingBalance fields
+      if (data.phoneNumber && data.closingBalance) {
+        updates.push({
+          phoneNumber: data.phoneNumber,
+          closingBalance: parseFloat(data.closingBalance),
+        });
+      } else {
+        console.warn('Invalid data row, missing phoneNumber or closingBalance:', data);
+      }
+    })
+    .on('end', async () => {
+      try {
+        // Batch update customers based on phone numbers
+        for (const update of updates) {
+          await prisma.customer.updateMany({
+            where: { phoneNumber: update.phoneNumber },
+            data: { closingBalance: update.closingBalance },
+          });
+        }
+        
+        res.status(200).json({ message: 'Customers updated successfully', updates });
+      } catch (error) {
+        console.error('Error updating customers:', error);
+        res.status(500).json({ message: 'Error updating customers' });
+      }
+    })
+    .on('error', (error) => {
+      console.error('Error reading CSV file:', error);
+      res.status(500).json({ message: 'Error processing file' });
+    });
+};
+
+
+
  
 // Export the upload middleware and controller function for use in other files
 module.exports = {
   upload,
-  uploadCustomers,
+  uploadCustomers,updateCustomersClosingBalance
 };
