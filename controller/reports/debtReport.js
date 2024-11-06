@@ -109,7 +109,9 @@ async function getCurrentCustomersDebt(req, res) {
       firstName: true, lastName: true, phoneNumber: true, email: true, monthlyCharge: true, closingBalance: true, garbageCollectionDay: true
     }
   });
-  const filteredCustomers = customers.filter(c => c.closingBalance >= c.monthlyCharge);
+
+  //  customer.closingBalance >= customer.monthlyCharge * 0.15 
+  const filteredCustomers = customers.filter(c => c.closingBalance >= c.monthlyCharge * 0.15);
   if (!filteredCustomers.length) return res.status(404).json({ message: "No current balance customers found." });
   await generateReport(filteredCustomers, 'Current Balance Report', 'current-balance-report', res);
 }
