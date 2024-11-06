@@ -2,26 +2,8 @@ const axios = require('axios');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-const ENDPOINT = process.env.BULK_SMS_ENDPOINT; 
+const ENDPOINT = process.env.BULK_SMS_ENDPOINT;
 const SMS_BALANCE_URL = process.env.SMS_BALANCE_URL; // URL for checking SMS balance
-
-// Function to sanitize phone numbers
-function sanitizePhoneNumber(phone) {
-    if (typeof phone !== 'string') {
-        console.error('Invalid phone number format:', phone);
-        return '';
-    }
-
-    if (phone.startsWith('+254')) {
-        return phone.slice(1); // Remove '+'
-    } else if (phone.startsWith('0')) {
-        return `254${phone.slice(1)}`; // Replace '0' with '254'
-    } else if (phone.startsWith('254')) {
-        return phone; // Already in the correct format
-    } else {
-        return `254${phone}`; // Add '254' for other formats
-    }
-}
 
 // Function to check SMS balance
 const checkSmsBalance = async () => {
@@ -40,33 +22,23 @@ const checkSmsBalance = async () => {
 // Function to send bulk SMS
 const sendBulkSMS = async (customers) => {
     try {
-        const smsList = customers.map(customer => {
-            const mobile = sanitizePhoneNumber(customer.phoneNumber);
-            if (!mobile) {
-                console.error(`Skipping invalid phone number for customer ${customer.firstName}:`, customer.phoneNumber);
-                return null; // Skip customers with invalid phone numbers
-            }
+        const smsList = customers.map(customer => ({
+            partnerID: process.env.PARTNER_ID,
+            apikey: process.env.SMS_API_KEY,
+            pass_type: "plain",
+            clientsmsid: Math.floor(Math.random() * 10000),
+            mobile: customer.phoneNumber,  // Directly use the phone number as provided
+            message: customer.message,
+            shortcode: process.env.SHORTCODE,
+        }));
 
-            return {
-                partnerID: process.env.PARTNER_ID,
-                apikey: process.env.SMS_API_KEY,
-                pass_type: "plain",
-                clientsmsid: Math.floor(Math.random() * 10000),
-                mobile: mobile,
-                message: customer.message,
-                shortcode: process.env.SHORTCODE,
-            };
-        });
-
-        const filteredSmsList = smsList.filter(sms => sms !== null);
-
-        if (filteredSmsList.length > 0) {
+        if (smsList.length > 0) {
             const response = await axios.post(ENDPOINT, {
-                count: filteredSmsList.length,
-                smslist: filteredSmsList,
+                count: smsList.length,
+                smslist: smsList,
             });
 
-            console.log(`Sent ${filteredSmsList.length} bulk SMS messages.`);
+            console.log(`Sent ${smsList.length} bulk SMS messages.`);
             return response.data;
         } else {
             console.log('No valid customers to send SMS.');
@@ -90,7 +62,6 @@ const sendUnpaidCustomers = async (req, res) => {
                 monthlyCharge: true,
             },
         });
-        //
 
         const unpaidCustomers = activeCustomers.filter(customer => 
             customer.closingBalance >= customer.monthlyCharge * 0.15 // 15% of monthly charge
@@ -98,7 +69,7 @@ const sendUnpaidCustomers = async (req, res) => {
 
         const customersWithMessages = unpaidCustomers.map(customer => ({
             ...customer,
-            message: `Dear ${customer.firstName}, you have an outstanding balance of ${customer.closingBalance.toFixed(2)}. Help us server you better by always paying on time. Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923`,
+            message: `Dear ${customer.firstName}, you have an outstanding balance of ${customer.closingBalance.toFixed(2)}. Help us serve you better by always paying on time. Paybill No: 4107197, use your phone number as the account number. Customer support: 0726594923`,
         }));
 
         const balance = await checkSmsBalance(); // Check balance before sending
@@ -138,7 +109,7 @@ const sendLowBalanceCustomers = async (req, res) => {
 
         const customersWithMessages = lowBalanceCustomers.map(customer => ({
             ...customer,
-            message: `Dear ${customer.firstName},Your Balance is  ${customer.closingBalance.toFixed(2)}. Help us server you better by always paying on time. Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923.`,
+            message: `Dear ${customer.firstName}, your balance is ${customer.closingBalance.toFixed(2)}. Help us serve you better by always paying on time. Paybill No: 4107197, use your phone number as the account number. Customer support: 0726594923.`,
         }));
 
         const balance = await checkSmsBalance(); // Check balance before sending
@@ -158,8 +129,7 @@ const sendLowBalanceCustomers = async (req, res) => {
         return res.status(500).json({ message: 'Failed to send SMS to low balance customers.' });
     }
 };
-//Help us server you better by always paying on time. Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923`;
-const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber);
+
 // Function to send SMS to high balance customers
 const sendHighBalanceCustomers = async (req, res) => {
     try {
@@ -179,7 +149,7 @@ const sendHighBalanceCustomers = async (req, res) => {
 
         const customersWithMessages = highBalanceCustomers.map(customer => ({
             ...customer,
-            message: `Dear ${customer.firstName}, Your current balance is ${customer.closingBalance.toFixed(2)},which is alot, Help us server you better by always paying on time. Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923`,
+            message: `Dear ${customer.firstName}, your current balance is ${customer.closingBalance.toFixed(2)}, which is quite high. Help us serve you better by always paying on time. Paybill No: 4107197, use your phone number as the account number. Customer support: 0726594923`,
         }));
 
         const balance = await checkSmsBalance(); // Check balance before sending
