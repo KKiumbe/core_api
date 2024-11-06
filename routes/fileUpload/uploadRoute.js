@@ -5,7 +5,7 @@ const router = express.Router();
 
 // Route for uploading customer data
 router.post('/upload-customers', upload.single('file'), uploadCustomers);
-app.post('/update-customers', upload.single('file'), updateCustomersClosingBalance);
+router.post('/update-customers', upload.single('file'), updateCustomersClosingBalance);
 
 
 // Export the router to use in your main app
