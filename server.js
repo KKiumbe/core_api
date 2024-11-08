@@ -45,7 +45,7 @@ app.use('/api', customerRoutes);
 app.use('/api', userRoutes);
 app.use('/api', sendtoGroup);
 app.use('/api', invoiceRoutes);
-app.use('/api', mpesaRoute);x
+app.use('/api', mpesaRoute);
 app.use('/api', collectionRoute);
 app.use('/api', receiptRoute);
 app.use('/api', paymentRoute);
