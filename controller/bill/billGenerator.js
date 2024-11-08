@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 // Function to generate a unique invoice number
 function generateInvoiceNumber(customerId) {
-  const invoiceSuffix = Math.floor(Math.random() * 10000).toString().padStart(3, '0');
+  const invoiceSuffix = Math.floor(Math.random() * 1000000).toString().padStart(3, '0');
   return `INV${invoiceSuffix}-${customerId}`;
 }
 
@@ -128,15 +128,20 @@ async function createInvoice(req, res) {
     const newClosingBalance = currentClosingBalance + invoiceAmount;
     const invoiceNumber = generateInvoiceNumber(customerId);
 
-    // Determine the invoice status based on the closing balance
-    let invoiceStatus;
-    if (newClosingBalance > 0) {
-      invoiceStatus = 'UNPAID';
-    } else if (Math.abs(newClosingBalance) < invoiceAmount) {
-      invoiceStatus = 'PPAID'; // Partially Paid
-    } else {
-      invoiceStatus = 'PAID'; // Fully Paid
-    }
+ 
+    // Determine the invoice status based on the new closing balance
+let invoiceStatus;
+
+if (newClosingBalance > 0) {
+  invoiceStatus = 'UNPAID'; // Customer owes money, invoice is unpaid
+} else if (newClosingBalance === 0) {
+  invoiceStatus = 'PAID'; // Fully paid, no balance remaining
+} else if (newClosingBalance < 0) {
+  invoiceStatus = 'PAID'; // Customer has overpaid (negative balance), invoice is still considered paid
+} else if (Math.abs(newClosingBalance) < invoiceAmount) {
+  invoiceStatus = 'PARTIALLY PAID'; // Customer has made a partial payment
+}
+
 
     const newInvoice =
      await prisma.invoice.create({
