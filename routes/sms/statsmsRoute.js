@@ -1,6 +1,6 @@
 const  express = require ('express');
 const { sendUnpaidCustomers, sendLowBalanceCustomers, sendHighBalanceCustomers } = require('../../controller/bulkSMS/dashboardSMS.js');
-const { updateSmsDeliveryStatus, getSmsMessages } = require('../../controller/bulkSMS/deliveryStatus.js');
+const { updateSmsDeliveryStatus, getSmsMessages, } = require('../../controller/bulkSMS/deliveryStatus.js');
 
 
 const router = express.Router();
