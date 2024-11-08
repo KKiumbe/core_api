@@ -29,25 +29,26 @@ async function updateSmsDeliveryStatus(clientsmsid) {
 
 
 // Function to retrieve SMS messages from the database
-const getSmsMessages = async (req, res) =>{
-
-  try {
-    const smsMessages = await prisma.sms.findMany({
-      orderBy: {
-        createdAt: 'desc', // Sort by latest first
-      },
-    });
-
-    // Send a successful response with the data
-    res.status(200).json({ success: true, data: smsMessages });
-  } catch (error) {
-    console.error('Error fetching SMS messages:', error);
-    res.status(500).json({ success: false, message: 'Server error while retrieving SMS messages' });
-  }
-};
-
-
-  module.exports={getSmsMessages,
-    updateSmsDeliveryStatus
-  }
+const getSmsMessages = async (req, res) => {
+    try {
+      // Fetch SMS messages from the database, ordered by the creation date in descending order
+      const smsMessages = await prisma.sms.findMany({
+        orderBy: {
+          createdAt: 'desc', // Sort by latest first
+        },
+      });
+  
+      // Send a successful response with the fetched data
+      res.status(200).json({ success: true, data: smsMessages });
+    } catch (error) {
+      console.error('Error fetching SMS messages:', error);
+      res.status(500).json({ success: false, message: 'Server error while retrieving SMS messages' });
+    }
+  };
+  
+  // Export the functions
+  module.exports = {
+    getSmsMessages,
+    updateSmsDeliveryStatus,  // Make sure this function is defined if you're exporting it
+  };
   
