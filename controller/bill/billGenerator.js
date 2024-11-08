@@ -32,6 +32,10 @@ async function getCurrentMonthBill(customerId) {
   }
 }
 
+
+
+
+
 // Generate invoices for active customers
 async function generateInvoices() {
   const currentMonth = new Date().getMonth() + 1;
@@ -48,17 +52,24 @@ async function generateInvoices() {
         const currentMonthBill = await getCurrentMonthBill(customer.id);
         const invoiceAmount = currentMonthBill;
 
-        // Determine the status of the invoice based on the closing balance
-        let status;
-        if (currentClosingBalance > 0) {
-          // Scenario 1: UNPAID
-          status = 'UNPAID';
-        } else if (Math.abs(currentClosingBalance) < invoiceAmount) {
-          // Scenario 2: PPAID (Partially Paid)
+        // Determine the status of the invoice based on the current closing balance
+        let status = 'UNPAID'; // Default status
+
+        // We update the status after the invoice is created based on customer's balance
+        const newClosingBalance = currentClosingBalance + invoiceAmount;
+
+        if (newClosingBalance < 0 && Math.abs(currentClosingBalance) >= invoiceAmount) {
+          // Scenario: PAID - Invoice is fully paid due to overpayment or negative balance
+          status = 'PAID';
+        } else if (newClosingBalance === 0) {
+          // Scenario: PAID - Invoice is fully paid (no remaining balance)
+          status = 'PAID';
+        } else if (newClosingBalance > 0 && newClosingBalance < invoiceAmount) {
+          // Scenario: PPAID (Partially Paid) - Customer has made a partial payment
           status = 'PPAID';
         } else {
-          // Scenario 3: PAID
-          status = 'PAID';
+          // Scenario: UNPAID - Customer still owes money
+          status = 'UNPAID';
         }
 
         // Create the new invoice
@@ -67,7 +78,7 @@ async function generateInvoices() {
             customerId: customer.id,
             invoiceNumber,
             invoicePeriod,
-            closingBalance: currentClosingBalance + invoiceAmount, // Update closing balance
+            closingBalance: newClosingBalance, // Update closing balance
             invoiceAmount,
             status, // Set status based on the determined condition
             isSystemGenerated: true,
@@ -89,7 +100,7 @@ async function generateInvoices() {
         // Update the customer’s closing balance
         await prisma.customer.update({
           where: { id: customer.id },
-          data: { closingBalance: currentClosingBalance + invoiceAmount },
+          data: { closingBalance: newClosingBalance },
         });
 
         return newInvoice;
@@ -106,6 +117,7 @@ async function generateInvoices() {
 
 
 // Create a manual invoice for a customer
+
 
 async function createInvoice(req, res) {
   const { customerId, invoiceItemsData } = req.body;
@@ -128,23 +140,25 @@ async function createInvoice(req, res) {
     const newClosingBalance = currentClosingBalance + invoiceAmount;
     const invoiceNumber = generateInvoiceNumber(customerId);
 
- 
     // Determine the invoice status based on the new closing balance
-let invoiceStatus;
+    let invoiceStatus;
 
-if (newClosingBalance > 0) {
-  invoiceStatus = 'UNPAID'; // Customer owes money, invoice is unpaid
-} else if (newClosingBalance === 0) {
-  invoiceStatus = 'PAID'; // Fully paid, no balance remaining
-} else if (newClosingBalance < 0) {
-  invoiceStatus = 'PAID'; // Customer has overpaid (negative balance), invoice is still considered paid
-} else if (Math.abs(newClosingBalance) < invoiceAmount) {
-  invoiceStatus = 'PARTIALLY PAID'; // Customer has made a partial payment
-}
+    if (newClosingBalance < 0 && Math.abs(currentClosingBalance) >= invoiceAmount) {
+      // Scenario: PAID - Invoice is fully paid due to overpayment or negative balance
+      invoiceStatus = 'PAID';
+    } else if (newClosingBalance === 0) {
+      // Scenario: PAID - Fully paid, no outstanding balance
+      invoiceStatus = 'PAID';
+    } else if (newClosingBalance > 0 && newClosingBalance < invoiceAmount) {
+      // Scenario: PPAID (Partially Paid) - Customer has partially paid
+      invoiceStatus = 'PPAID';
+    } else {
+      // Scenario: UNPAID - Customer still owes money
+      invoiceStatus = 'UNPAID';
+    }
 
-
-    const newInvoice =
-     await prisma.invoice.create({
+    // Create the new invoice
+    const newInvoice = await prisma.invoice.create({
       data: {
         customerId,
         invoiceNumber,
@@ -156,6 +170,7 @@ if (newClosingBalance > 0) {
       },
     });
 
+    // Create invoice items
     const invoiceItems = await Promise.all(
       invoiceItemsData.map(itemData =>
         prisma.invoiceItem.create({
@@ -169,6 +184,7 @@ if (newClosingBalance > 0) {
       )
     );
 
+    // Update the customer's closing balance after creating the invoice
     await prisma.customer.update({
       where: { id: customerId },
       data: { closingBalance: newClosingBalance },
@@ -238,7 +254,7 @@ async function cancelSystemGeneratedInvoices() {
       where: { id: latestInvoice.id },
       data: {
         status: 'CANCELLED',
-        closingBalance: newClosingBalance,
+        closingBalance: currentClosingBalance,
       },
     });
 
