@@ -55,7 +55,7 @@ app.use('/api', uploadcustomers); // Adjust your API path as needed
 app.use('/api', customerdetailsRoute); 
 app.use('/api', smsBalanceRoute); 
 app.use('/api', reportsReoute); 
-x
+
 // Start the HTTP server
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on http://212.47.74.158:${PORT}`);
