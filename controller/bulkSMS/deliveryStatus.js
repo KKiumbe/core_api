@@ -3,7 +3,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 require('dotenv').config();
 
-const ENDPOINT = process.env.SMS_DELIVERY_REPORT;
+const ENDPOINT = 'https://quicksms.advantasms.com/api/services/getdlr/'
 
 
 // Function to update SMS delivery status
