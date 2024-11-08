@@ -112,18 +112,37 @@ router.post('/send-to-group', async (req, res) => {
     }
 });
 
+
+
+
+
+
 // Send a single SMS
 router.post('/send-sms', async (req, res) => {
     const { message, mobile } = req.body;
 
     try {
-        // Convert mobile to a string if it's not
+        // Ensure mobile is a string and sanitize it
         const mobileString = String(mobile);
-        const sanitisedNumber = sanitizePhoneNumber(mobileString);
+        const sanitizedNumber = sanitizePhoneNumber(mobileString);
+
+        // Generate a unique ID for clientsmsid
+        const smsid = Math.floor(Math.random() * 1000000);
+
+        // Create the SMS record in the database with status 'pending'
+        const smsRecord = await prisma.sms.create({
+            data: {
+                clientsmsid: smsid,
+                mobile: sanitizedNumber,
+                message,
+                status: 'pending',
+            },
+        });
 
         // Define the sendSMS function
-        const sendSMS = async (sanitisedNumber, message) => {
-            console.log(`Sanitised number is ${sanitisedNumber}`);
+        const sendSMS = async (sanitizedNumber, message) => {
+            console.log(`Sanitized number is ${sanitizedNumber}`);
+
             try {
                 const balance = await checkSmsBalance();
                 if (balance < 3) {
@@ -131,59 +150,69 @@ router.post('/send-sms', async (req, res) => {
                 }
 
                 const payload = {
-                    partnerID: PARTNER_ID,
-                    apikey: SMS_API_KEY,
-                    mobile: sanitisedNumber,
+                    partnerID: process.env.PARTNER_ID,
+                    apikey: process.env.SMS_API_KEY,
+                    mobile: sanitizedNumber,
                     message,
-                    shortcode: SHORTCODE,
+                    shortcode: process.env.SHORTCODE,
                 };
 
-                console.log(`This is payload: ${JSON.stringify(payload)}`);
+                console.log(`Payload: ${JSON.stringify(payload)}`);
 
-                const response = await axios.post(SMS_ENDPOINT, payload, {
-                    headers: {
-                        'Content-Type': 'application/json',
+                const response = await axios.post(process.env.SMS_ENDPOINT, payload, {
+                    headers: { 'Content-Type': 'application/json' },
+                });
+
+                // Update the SMS record in the database with status 'sent' and response data
+                await prisma.sms.update({
+                    where: { id: smsRecord.id },
+                    data: {
+                        status: 'sent',
+                        response: response.data,
                     },
                 });
 
-                console.log(`SMS sent to ${sanitisedNumber}: ${message}`);
+                console.log(`SMS sent to ${sanitizedNumber}: ${message}`);
                 return response.data;
             } catch (error) {
                 console.error('Error sending SMS:', error);
+
+                // Update the SMS record to status 'failed' if there was an error
+                await prisma.sms.update({
+                    where: { id: smsRecord.id },
+                    data: {
+                        status: 'failed',
+                        response: error.response ? error.response.data : 'Failed to send SMS.',
+                    },
+                });
+
                 throw new Error(error.response ? error.response.data : 'Failed to send SMS.');
             }
         };
 
-        // Send the SMS
-        const response = await sendSMS(sanitisedNumber, message);
+        // Send the SMS and await the response
+        const response = await sendSMS(sanitizedNumber, message);
 
-        // Respond with success
+        // Respond with success if SMS sent successfully
         res.status(200).json({
             success: true,
-            message: `SMS sent to ${sanitisedNumber}`,
+            message: `SMS sent to ${sanitizedNumber}`,
             data: response,
         });
 
-
-        await prisma.sms.create({
-            data: {
-             clientsmsid: Math.floor(Math.random() * 10000),
-              mobile: sanitisedNumber,
-              message,
-              status: 'sent',
-              response: response.data,
-            },
-          });
-  
-
-        // 
     } catch (error) {
+        console.error('Error in send-sms route:', error);
+
         res.status(500).json({
             success: false,
             message: error.message,
         });
     }
 });
+
+
+
+
 
 // Send bills to all active customers
 router.post('/send-bills', async (req, res) => {
