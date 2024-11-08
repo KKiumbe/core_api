@@ -3,28 +3,54 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 
-async function updateSmsDeliveryStatus(clientsmsid) {
-    const ENDPOINT = process.env.SMS_DELIVERY_REPORT
-  
-    try {
-      const response = await axios.post(ENDPOINT, {
-        apikey: process.env.SMS_API_KEY,
-        partnerID: process.env.PARTNER_ID,
-        messageID: clientsmsid,
-      });
-  
-      const status = response.data.status; // Adjust based on actual response
-      await prisma.sms.update({
-        where: { clientsmsid },
-        data: { status },
-      });
-  
-      console.log(`Updated delivery status for SMS ID ${clientsmsid}`);
-    } catch (error) {
-      console.error('Error updating SMS delivery status:', error);
-      throw new Error('Failed to retrieve SMS delivery status');
-    }
+
+
+// Function to update SMS delivery status
+async function updateSmsDeliveryStatus(req, res) {
+  const { clientsmsid } = req.body;  // Get clientsmsid from the request body
+
+  if (!clientsmsid) {
+    return res.status(400).json({ success: false, message: 'clientsmsid is required' });
   }
+
+  const ENDPOINT = process.env.SMS_DELIVERY_REPORT;
+
+  try {
+    // Send POST request to update the delivery status
+    const response = await axios.post(ENDPOINT, {
+      apikey: process.env.SMS_API_KEY,
+      partnerID: process.env.PARTNER_ID,
+      messageID: clientsmsid,
+    });
+
+    // Check the response from the API and log it
+    if (response.status === 200) {
+      console.log(`Updated delivery status for SMS ID ${clientsmsid}`);
+      return res.status(200).json({
+        success: true,
+        message: `Successfully updated delivery status for SMS ID ${clientsmsid}`,
+      });
+    } else {
+      return res.status(response.status).json({
+        success: false,
+        message: `Failed to update delivery status for SMS ID ${clientsmsid}`,
+      });
+    }
+  } catch (error) {
+    console.error('Error updating SMS delivery status:', error);
+
+    // Return error response
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve SMS delivery status',
+      error: error.message,
+    });
+  }
+}
+
+
+
+
 
 
 
