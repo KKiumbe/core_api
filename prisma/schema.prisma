@@ -175,7 +175,7 @@ model ReceiptInvoice {
 }
 
 
-model Sms {
+model sms {
   id           String    @id @default(auto()) @map("_id") @db.ObjectId
   clientsmsid  Int       @unique // Use the unique identifier to track SMS
   customerId   String?   @db.ObjectId // Optional: Relate to Customer
