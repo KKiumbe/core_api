@@ -29,8 +29,8 @@ async function updateSmsDeliveryStatus(clientsmsid) {
 
 
 // Function to retrieve SMS messages from the database
-const   getSmsMessages = async (req, res) =>{
-    
+const getSmsMessages = async (req, res) =>{
+
   try {
     const smsMessages = await prisma.sms.findMany({
       orderBy: {
