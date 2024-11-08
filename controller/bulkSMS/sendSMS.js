@@ -17,7 +17,6 @@ async function checkSmsBalance() {
   }
 }
 
-
 async function generateBulkBillSmsMessage() {
   const ENDPOINT = process.env.BULK_SMS_ENDPOINT;
 
@@ -58,11 +57,12 @@ async function generateBulkBillSmsMessage() {
           ? customer.phoneNumber.slice(1)
           : customer.phoneNumber;
 
-        const message = `Dear ${customerName}, your ${month} bill is ${currentMonthBill}, your previous balance is ${closingBalance - currentMonthBill}, and your total balance is ${closingBalance}. Help us serve you better by always paying on time. Paybill No :4107197 , your phone number as the account number. Customer support: 0726594923.`;
+        // Generate sanitized SMS message
+        const message = generateSanitizedMessage(customerName, currentMonthBill, closingBalance);
 
-      
         const clientsmsid = uuidv4();
 
+        // Save the SMS details in the database
         await prisma.sms.create({
           data: {
             clientsmsid,
@@ -85,6 +85,7 @@ async function generateBulkBillSmsMessage() {
       })
     );
 
+    // Filter out any null values (in case no invoice found for the customer)
     const filteredSmsList = smsList.filter(sms => sms !== null);
 
     if (filteredSmsList.length > 0) {
@@ -116,6 +117,23 @@ async function generateBulkBillSmsMessage() {
     console.error('Error generating bulk SMS:', error);
     throw error;
   }
+}
+
+// Function to sanitize the SMS message
+function generateSanitizedMessage(customerName, currentMonthBill, closingBalance) {
+  const month = new Date().toLocaleString('default', { month: 'long' });
+  let balanceMessage = '';
+
+  // Check if the closing balance is negative (overpayment/credit)
+  if (closingBalance < 0) {
+    balanceMessage = `Your total balance is KSH${Math.abs(closingBalance)} (overpaid).`;
+  } else if (closingBalance === 0) {
+    balanceMessage = `Your total balance is KSH${closingBalance}.`;
+  } else {
+    balanceMessage = `Your total balance is KSH${closingBalance}.`;
+  }
+
+  return `Dear ${customerName}, your ${month} bill is KSH${currentMonthBill}. ${balanceMessage} Help us serve you better by always paying on time. Paybill No: 4107197, use your phone number as the account number. Customer support: 0726594923.`;
 }
 
 module.exports = { generateBulkBillSmsMessage };

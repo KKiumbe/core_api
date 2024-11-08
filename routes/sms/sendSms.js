@@ -291,7 +291,7 @@ router.post('/send-bills', async (req, res) => {
             } else {
                 // Calculate previous balance if applicable
                 const previousBalance = currentBalance - currentInvoice;
-                message = `Dear ${customer.firstName}, your previous balance for ${currentMonth} is KES ${previousBalance}. Your ${currentMonth} bill is KES ${currentInvoice}. Total balance is KES ${currentBalance}. Use Paybill No :4107197 ,your phone number as the account number.Customer support number: 0726594923.`;
+                message = `Dear ${customer.firstName}, your ${currentMonth} bill is KES ${currentInvoice}. Total balance is KES ${currentBalance}. Use Paybill No :4107197 ,your phone number as the account number.Customer support number: 0726594923.`;
             }
 
             return {

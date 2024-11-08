@@ -36,87 +36,96 @@ async function getCurrentMonthBill(customerId) {
 
 
 
-// Generate invoices for active customers
+// Generate invoices for active customers atomically
 async function generateInvoices() {
   const currentMonth = new Date().getMonth() + 1;
 
-  try {
-    const customers = await prisma.customer.findMany({ where: { status: 'ACTIVE' } });
-    console.log(`Found ${customers.length} active customers.`);
+  const transaction = await prisma.$transaction(async (prisma) => {
+    try {
+      const customers = await prisma.customer.findMany({ where: { status: 'ACTIVE' } });
+      console.log(`Found ${customers.length} active customers.`);
 
-    const invoices = await Promise.all(
-      customers.map(async (customer) => {
-        const invoiceNumber = generateInvoiceNumber(customer.id);
-        const invoicePeriod = new Date(new Date().getFullYear(), currentMonth - 1, 1);
-        const currentClosingBalance = await getCurrentClosingBalance(customer.id);
-        const currentMonthBill = await getCurrentMonthBill(customer.id);
-        const invoiceAmount = currentMonthBill;
+      const invoices = await Promise.all(
+        customers.map(async (customer) => {
+          const invoiceNumber = generateInvoiceNumber(customer.id);
+          const invoicePeriod = new Date(new Date().getFullYear(), currentMonth - 1, 1);
+          const currentClosingBalance = await getCurrentClosingBalance(customer.id);
+          const currentMonthBill = await getCurrentMonthBill(customer.id);
+          const invoiceAmount = currentMonthBill;
 
-        // Determine the status of the invoice based on the current closing balance
-        let status = 'UNPAID'; // Default status
+          // Determine the status of the invoice based on the current closing balance
+          let status = 'UNPAID'; // Default status
 
-        // We update the status after the invoice is created based on customer's balance
-        const newClosingBalance = currentClosingBalance + invoiceAmount;
+          const newClosingBalance = currentClosingBalance + invoiceAmount;
 
-        if (newClosingBalance < 0 && Math.abs(currentClosingBalance) >= invoiceAmount) {
-          // Scenario: PAID - Invoice is fully paid due to overpayment or negative balance
-          status = 'PAID';
-        } else if (newClosingBalance === 0) {
-          // Scenario: PAID - Invoice is fully paid (no remaining balance)
-          status = 'PAID';
-        } else if (newClosingBalance > 0 && newClosingBalance < invoiceAmount) {
-          // Scenario: PPAID (Partially Paid) - Customer has made a partial payment
-          status = 'PPAID';
-        } else {
-          // Scenario: UNPAID - Customer still owes money
-          status = 'UNPAID';
-        }
+          if (newClosingBalance < 0 && Math.abs(currentClosingBalance) >= invoiceAmount) {
+            // Scenario: PAID - Invoice is fully paid due to overpayment or negative balance
+            status = 'PAID';
+          } else if (newClosingBalance === 0) {
+            // Scenario: PAID - Invoice is fully paid (no remaining balance)
+            status = 'PAID';
+          } else if (newClosingBalance > 0 && newClosingBalance < invoiceAmount) {
+            // Scenario: PPAID (Partially Paid) - Customer has made a partial payment
+            status = 'PPAID';
+          } else {
+            // Scenario: UNPAID - Customer still owes money
+            status = 'UNPAID';
+          }
 
-        // Create the new invoice
-        const newInvoice = await prisma.invoice.create({
-          data: {
-            customerId: customer.id,
-            invoiceNumber,
-            invoicePeriod,
-            closingBalance: newClosingBalance, // Update closing balance
-            invoiceAmount,
-            status, // Set status based on the determined condition
-            isSystemGenerated: true,
-          },
-        });
-
-        // Create invoice item only if invoice amount is greater than zero
-        if (invoiceAmount > 0) {
-          await prisma.invoiceItem.create({
+          // Create the new invoice
+          const newInvoice = await prisma.invoice.create({
             data: {
-              invoiceId: newInvoice.id,
-              description: 'Monthly Charge',
-              amount: invoiceAmount,
-              quantity: 1,
+              customerId: customer.id,
+              invoiceNumber,
+              invoicePeriod,
+              closingBalance: newClosingBalance, // Update closing balance
+              invoiceAmount,
+              status, // Set status based on the determined condition
+              isSystemGenerated: true,
             },
           });
-        }
 
-        // Update the customer’s closing balance
-        await prisma.customer.update({
-          where: { id: customer.id },
-          data: { closingBalance: newClosingBalance },
-        });
+          // Create invoice item only if invoice amount is greater than zero
+          if (invoiceAmount > 0) {
+            await prisma.invoiceItem.create({
+              data: {
+                invoiceId: newInvoice.id,
+                description: 'Monthly Charge',
+                amount: invoiceAmount,
+                quantity: 1,
+              },
+            });
+          }
 
-        return newInvoice;
-      })
-    );
+          // Update the customer’s closing balance
+          await prisma.customer.update({
+            where: { id: customer.id },
+            data: { closingBalance: newClosingBalance },
+          });
 
-    console.log(`Generated ${invoices.length} invoices.`);
-    return invoices;
-  } catch (error) {
-    console.error('Error generating invoices:', error);
-    throw error;
-  }
+          return newInvoice;
+        })
+      );
+
+      console.log(`Generated ${invoices.length} invoices.`);
+      return invoices;
+    } catch (error) {
+      console.error('Error generating invoices:', error);
+      throw new Error('Transaction failed');
+    }
+  });
+
+  return transaction;
 }
 
 
 // Create a manual invoice for a customer
+
+
+
+
+
+
 
 
 async function createInvoice(req, res) {
@@ -237,37 +246,44 @@ async function cancelInvoice(invoiceId) {
   }
 }
 
-// Cancel system-generated invoices
+// Cancel system-generated invoices atomically
 async function cancelSystemGeneratedInvoices() {
-  try {
-    const latestInvoice = await prisma.invoice.findFirst({
-      where: { isSystemGenerated: true },
-      orderBy: { createdAt: 'desc' },
-    });
+  const transaction = await prisma.$transaction(async (prisma) => {
+    try {
+      // Fetch the latest system-generated invoice
+      const latestInvoice = await prisma.invoice.findFirst({
+        where: { isSystemGenerated: true },
+        orderBy: { createdAt: 'desc' },
+      });
 
-    if (!latestInvoice) return null;
+      if (!latestInvoice) return null;
 
-    const currentClosingBalance = await getCurrentClosingBalance(latestInvoice.customerId);
-    const newClosingBalance = currentClosingBalance - latestInvoice.invoiceAmount;
+      const currentClosingBalance = await getCurrentClosingBalance(latestInvoice.customerId);
+      const newClosingBalance = currentClosingBalance - latestInvoice.invoiceAmount;
 
-    const updatedInvoice = await prisma.invoice.update({
-      where: { id: latestInvoice.id },
-      data: {
-        status: 'CANCELLED',
-        closingBalance: currentClosingBalance,
-      },
-    });
+      // Update the invoice status and closing balance
+      const updatedInvoice = await prisma.invoice.update({
+        where: { id: latestInvoice.id },
+        data: {
+          status: 'CANCELLED',
+          closingBalance: currentClosingBalance, // Retain the original balance before canceling
+        },
+      });
 
-    await prisma.customer.update({
-      where: { id: latestInvoice.customerId },
-      data: { closingBalance: newClosingBalance },
-    });
+      // Update the customer's closing balance
+      await prisma.customer.update({
+        where: { id: latestInvoice.customerId },
+        data: { closingBalance: newClosingBalance },
+      });
 
-    return updatedInvoice;
-  } catch (error) {
-    console.error('Error cancelling system-generated invoice:', error);
-    throw error;
-  }
+      return updatedInvoice;
+    } catch (error) {
+      console.error('Error cancelling system-generated invoice:', error);
+      throw new Error('Transaction failed');
+    }
+  });
+
+  return transaction;
 }
 
 // Get all invoices, ordered by the latest first
