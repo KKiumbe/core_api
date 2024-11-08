@@ -15,6 +15,8 @@ async function updateSmsDeliveryStatus(req, res) {
 
   const ENDPOINT = process.env.SMS_DELIVERY_REPORT;
 
+  console.log(ENDPOINT);
+
   try {
     // Send POST request to update the delivery status
     const response = await axios.post(ENDPOINT, {
