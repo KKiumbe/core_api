@@ -319,6 +319,10 @@ router.post('/send-to-all', async (req, res) => {
 
 
 
+
+
+
+
 // Send a bill SMS
 router.post('/send-bill', async (req, res) => {
     const { customerId } = req.body;
@@ -362,24 +366,31 @@ router.post('/send-bill', async (req, res) => {
             return res.status(500).json({ error: 'Insufficient SMS balance.' });
         }
 
+        const smsid = Math.floor(Math.random() * 1000000); // Unique ID for tracking
+
+
         const smsRecord = await prisma.sms.create({
+
+
             data: {
                 mobile: sanitizedMobile,
                 message,
                 status: 'pending',
+                clientsmsid: smsid, // or generate a unique identifier if needed
             },
         });
 
         const payload = {
-            apikey: SMS_API_KEY,
-            partnerID: PARTNER_ID,
-            shortcode: SHORTCODE,
+            apikey: process.env.SMS_API_KEY,
+            partnerID: process.env.PARTNER_ID,
+            shortcode: process.env.SHORTCODE,
             message,
             mobile: sanitizedMobile,
         };
 
-        const response = await axios.post(SMS_ENDPOINT, payload);
+        const response = await axios.post(process.env.SMS_ENDPOINT, payload);
 
+        // Update `smsRecord` with status and response data after successful SMS send
         await prisma.sms.update({
             where: { id: smsRecord.id },
             data: {
@@ -391,18 +402,27 @@ router.post('/send-bill', async (req, res) => {
         res.status(response.status).json({ message: 'Bill sent successfully!', data: response.data });
     } catch (error) {
         console.error('Error sending bill:', error);
-        
-        await prisma.sms.update({
-            where: { id: smsRecord.id },
-            data: {
-                status: 'failed',
-                response: error.response ? error.response.data : 'Failed to send SMS.',
-            },
-        });
+
+        // Update `smsRecord` only if it was successfully created
+        if (smsRecord) {
+            await prisma.sms.update({
+                where: { id: smsRecord.id },
+                data: {
+                    status: 'failed',
+                    response: error.response ? error.response.data : 'Failed to send SMS.',
+                },
+            });
+        }
 
         res.status(500).json({ error: error.response ? error.response.data : 'Failed to send bill.' });
     }
 });
+
+
+
+
+
+
 
 
 // Function to send SMS to a list of recipients
@@ -411,7 +431,7 @@ const sendSms = async (messages) => {
         // Prepare the SMS list payload for the bulk SMS API
         const smsList = await Promise.all(
             messages.map(async ({ phoneNumber, message }) => {
-                const clientsmsid = Math.floor(Math.random() * 10000); // Unique ID for tracking
+                const clientsmsid = Math.floor(Math.random() * 1000000); // Unique ID for tracking
 
                 // Save the SMS entry to the database with a pending status
                 await prisma.sms.create({

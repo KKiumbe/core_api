@@ -26,7 +26,7 @@ const sendBulkSMS = async (customers) => {
             partnerID: process.env.PARTNER_ID,
             apikey: process.env.SMS_API_KEY,
             pass_type: "plain",
-            clientsmsid: Math.floor(Math.random() * 10000),
+            clientsmsid: Math.floor(Math.random() * 10000000),
             mobile: customer.phoneNumber,  // Directly use the phone number as provided
             message: customer.message,
             shortcode: process.env.SHORTCODE,
