@@ -16,8 +16,8 @@ router.post('/send-sms-low-balance', sendLowBalanceCustomers);
 // Route to send SMS to high balance customers
 router.post('/send-sms-high-balance', sendHighBalanceCustomers);
 
-router.get('sms-delivery-report' ,updateSmsDeliveryStatus);
-router.get('sms-history',getSmsMessages);
+router.get('/sms-delivery-report' ,updateSmsDeliveryStatus);
+router.get('/sms-history',getSmsMessages);
 
 // Export the router to use in your main app
 module.exports = router;
