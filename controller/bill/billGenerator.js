@@ -270,11 +270,14 @@ async function cancelSystemGeneratedInvoices() {
   }
 }
 
-// Get all invoices
+// Get all invoices, ordered by the latest first
 async function getAllInvoices(req, res) {
   try {
     const invoices = await prisma.invoice.findMany({
       include: { customer: true, items: true },
+      orderBy: {
+        createdAt: 'desc',  // Order by createdAt in descending order
+      },
     });
 
     res.json(invoices);
@@ -283,6 +286,7 @@ async function getAllInvoices(req, res) {
     res.status(500).json({ error: 'Error fetching invoices' });
   }
 }
+
 
 // Cancel an invoice by ID (for API)
 async function cancelInvoiceById(req, res) {
