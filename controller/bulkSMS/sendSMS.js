@@ -70,6 +70,17 @@ async function generateBulkBillSmsMessage() {
 
         const message = `Dear ${customerName}, your ${month} bill is ${currentMonthBill}, your previous balance is ${closingBalance - currentMonthBill}, and your total balance is ${closingBalance}. Help us server you better by always paying on time. Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923`;
 
+
+        await prisma.sms.create({
+          data: {
+            clientsmsid,
+            customerId: customer.id,
+            mobile,
+            message,
+            status: 'pending', // Set initial status to pending
+          },
+        });
+
         return {
           partnerID: process.env.PARTNER_ID,
           apikey: process.env.SMS_API_KEY,

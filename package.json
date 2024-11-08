@@ -26,10 +26,11 @@
     "node": "20.x"
   },
   "scripts": {
-    "start": "node server.js",
+    "start": "nodemon server.js",
     "build": "npx prisma db push && npx prisma generate && next build"
   },
   "devDependencies": {
+    "nodemon": "^3.1.7",
     "typescript": "^5.6.3"
   }
 }

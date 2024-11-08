@@ -163,6 +163,20 @@ router.post('/send-sms', async (req, res) => {
             message: `SMS sent to ${sanitisedNumber}`,
             data: response,
         });
+
+
+        await prisma.sms.create({
+            data: {
+             clientsmsid: Math.floor(Math.random() * 10000),
+              mobile: sanitisedNumber,
+              message,
+              status: 'sent',
+              response: response.data,
+            },
+          });
+  
+
+        // 
     } catch (error) {
         res.status(500).json({
             success: false,
@@ -305,9 +319,9 @@ router.post('/send-to-all', async (req, res) => {
 
 
 
-
+// Send a bill SMS
 router.post('/send-bill', async (req, res) => {
-    const { customerId } = req.body; // Extract customer ID from request body
+    const { customerId } = req.body;
 
     // Validate input
     if (!customerId) {
@@ -321,9 +335,7 @@ router.post('/send-bill', async (req, res) => {
             include: {
                 invoices: {
                     where: { status: 'UNPAID' },
-                    orderBy: {
-                        createdAt: 'desc', // Ensure the latest invoice is first
-                    },
+                    orderBy: { createdAt: 'desc' },
                 },
             },
         });
@@ -332,79 +344,136 @@ router.post('/send-bill', async (req, res) => {
             return res.status(404).json({ error: 'Customer not found.' });
         }
 
-        // Get the current month name
         const currentMonth = getCurrentMonthName();
-
-        // Use the latest unpaid invoice amount for the current invoice
-        const currentInvoice = customer.monthlyCharge; // Assume `invoiceAmount` is the field for the invoice amount
+        const currentInvoice = customer.monthlyCharge;
         const currentBalance = customer.closingBalance;
 
-        // Construct the message based on the closing balance
         let message;
-
-        if (currentBalance < 0) { // Handle overpayment case
-            message = `Dear ${customer.firstName}, you have an overpayment of KES ${Math.abs(currentBalance)}. Help us server you better by using Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923.`;
+        if (currentBalance < 0) {
+            message = `Dear ${customer.firstName}, you have an overpayment of KES ${Math.abs(currentBalance)}. Paybill No: 4107197, phone number as account number. Customer support: 0726594923.`;
         } else {
-            // Previous balance is the sum of all previous unpaid invoices (excluding the latest one)
             const previousBalance = currentBalance - currentInvoice;
-
-            message = `Dear ${customer.firstName}, Your ${currentMonth} bill is KES ${currentInvoice}. Total balance is KES ${currentBalance}.Help us server you better by always paying on time. Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923.`;
+            message = `Dear ${customer.firstName}, Your ${currentMonth} bill is KES ${currentInvoice}. Total balance: KES ${currentBalance}. Pay on time. Paybill No: 4107197, phone number as account number. Customer support: 0726594923.`;
         }
 
-        // Sanitize the phone number
         const sanitizedMobile = sanitizePhoneNumber(customer.phoneNumber);
-
-        // Check SMS balance before sending
         const balance = await checkSmsBalance();
-        if (balance < 2) { // Ensure there's at least 2 credits for sending the SMS
-            console.log('Insufficient SMS balance to send bill.');
+        if (balance < 2) {
             return res.status(500).json({ error: 'Insufficient SMS balance.' });
         }
 
-        // Send the SMS
+        const smsRecord = await prisma.sms.create({
+            data: {
+                mobile: sanitizedMobile,
+                message,
+                status: 'pending',
+            },
+        });
+
         const payload = {
             apikey: SMS_API_KEY,
             partnerID: PARTNER_ID,
             shortcode: SHORTCODE,
-            message: message,
+            message,
             mobile: sanitizedMobile,
         };
 
         const response = await axios.post(SMS_ENDPOINT, payload);
 
-        return res.status(response.status).json({ message: 'Bill sent successfully!', data: response.data });
+        await prisma.sms.update({
+            where: { id: smsRecord.id },
+            data: {
+                status: 'sent',
+                response: response.data,
+            },
+        });
+
+        res.status(response.status).json({ message: 'Bill sent successfully!', data: response.data });
     } catch (error) {
         console.error('Error sending bill:', error);
-        const errorMessage = error.response ? error.response.data : 'Failed to send bill.';
-        return res.status(500).json({ error: errorMessage });
+        
+        await prisma.sms.update({
+            where: { id: smsRecord.id },
+            data: {
+                status: 'failed',
+                response: error.response ? error.response.data : 'Failed to send SMS.',
+            },
+        });
+
+        res.status(500).json({ error: error.response ? error.response.data : 'Failed to send bill.' });
     }
 });
 
 
-
 // Function to send SMS to a list of recipients
 const sendSms = async (messages) => {
-    // Prepare the SMS list payload for the bulk SMS API
-    const smsList = messages.map(({ phoneNumber, message }) => ({
-        partnerID: PARTNER_ID,
-        apikey: SMS_API_KEY,
-        pass_type: "plain",
-        clientsmsid: Math.floor(Math.random() * 10000), // Ensure this is unique if required
-        message: message,
-        shortcode: SHORTCODE,
-        mobile: sanitizePhoneNumber(phoneNumber),
-    }));
-
     try {
+        // Prepare the SMS list payload for the bulk SMS API
+        const smsList = await Promise.all(
+            messages.map(async ({ phoneNumber, message }) => {
+                const clientsmsid = Math.floor(Math.random() * 10000); // Unique ID for tracking
+
+                // Save the SMS entry to the database with a pending status
+                await prisma.sms.create({
+                    data: {
+                        clientsmsid,
+                        mobile: sanitizePhoneNumber(phoneNumber),
+                        message,
+                        status: 'pending',
+                    },
+                });
+
+                return {
+                    partnerID: PARTNER_ID,
+                    apikey: SMS_API_KEY,
+                    pass_type: "plain",
+                    clientsmsid,
+                    message,
+                    shortcode: SHORTCODE,
+                    mobile: sanitizePhoneNumber(phoneNumber),
+                };
+            })
+        );
+
+        // Send the bulk SMS request
         const response = await axios.post(BULK_SMS_ENDPOINT, {
             count: smsList.length,
             smslist: smsList,
         });
+
+        // Update the status of each SMS in the database to "sent" after successful delivery
+        await Promise.all(
+            smsList.map(async ({ clientsmsid }) => {
+                await prisma.sms.updateMany({
+                    where: { clientsmsid },
+                    data: { status: 'sent', response: response.data },
+                });
+            })
+        );
+
         return response.data;
     } catch (error) {
         console.error('Error sending bulk SMS:', error);
+
+        // Update the status of each SMS in the database to "failed" if there’s an error
+        await Promise.all(
+            messages.map(async ({ clientsmsid }) => {
+                await prisma.sms.updateMany({
+                    where: { clientsmsid },
+                    data: { status: 'failed', response: error.response ? error.response.data : 'Failed to send SMS' },
+                });
+            })
+        );
+
         throw error;
     }
 };
+
+
+
+
+
+
+
 
 module.exports = router;

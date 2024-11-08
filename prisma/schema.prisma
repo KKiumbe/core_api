@@ -173,3 +173,15 @@ model ReceiptInvoice {
   receipt     Receipt?     @relation("InvoiceReceipts", fields: [receiptId], references: [id], onDelete: Cascade)
   invoice     Invoice?     @relation("InvoiceReceipts", fields: [invoiceId], references: [id], onDelete: Cascade)
 }
+
+
+model Sms {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  clientsmsid  Int       @unique // Use the unique identifier to track SMS
+  customerId   String?   @db.ObjectId // Optional: Relate to Customer
+  mobile       String    // Recipient's mobile number
+  message      String    // SMS message content
+  status       String    // Store delivery status here
+  response     Json?     // Store API response if needed
+  createdAt    DateTime  @default(now())
+}
