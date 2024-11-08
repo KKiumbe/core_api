@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { v4: uuidv4 } = require('uuid');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -19,24 +20,57 @@ const checkSmsBalance = async () => {
     }
 };
 
-// Function to send bulk SMS
+
+
 const sendBulkSMS = async (customers) => {
     try {
-        const smsList = customers.map(customer => ({
-            partnerID: process.env.PARTNER_ID,
-            apikey: process.env.SMS_API_KEY,
-            pass_type: "plain",
-            clientsmsid: Math.floor(Math.random() * 10000000),
-            mobile: customer.phoneNumber,  // Directly use the phone number as provided
-            message: customer.message,
-            shortcode: process.env.SHORTCODE,
-        }));
+        // Map customer data and insert into `sms` collection with status "pending"
+        const smsList = await Promise.all(
+            customers.map(async (customer) => {
+                const clientsmsid = uuidv4();
+
+                // Save each SMS to the database with status "pending"
+                await prisma.sms.create({
+                    data: {
+                        clientsmsid,
+                        customerId: customer.id,
+                        mobile: customer.phoneNumber,
+                        message: customer.message,
+                        status: 'pending',
+                    },
+                });
+
+                // Return SMS data for API request
+                return {
+                    partnerID: process.env.PARTNER_ID,
+                    apikey: process.env.SMS_API_KEY,
+                    pass_type: "plain",
+                    clientsmsid,
+                    mobile: customer.phoneNumber,
+                    message: customer.message,
+                    shortcode: process.env.SHORTCODE,
+                };
+            })
+        );
 
         if (smsList.length > 0) {
             const response = await axios.post(ENDPOINT, {
                 count: smsList.length,
                 smslist: smsList,
             });
+
+            if (response.data.success) {
+                // Extract IDs of successfully sent messages
+                const sentIds = smsList.map(sms => sms.clientsmsid);
+
+                // Update the SMS status to "sent" in the database
+                await prisma.sms.updateMany({
+                    where: { clientsmsid: { in: sentIds } },
+                    data: { status: 'sent' },
+                });
+
+                console.log(`Updated status to 'sent' for ${sentIds.length} SMS records.`);
+            }
 
             console.log(`Sent ${smsList.length} bulk SMS messages.`);
             return response.data;
@@ -49,6 +83,10 @@ const sendBulkSMS = async (customers) => {
         throw new Error('SMS sending failed');
     }
 };
+
+
+
+
 
 // Function to send SMS to unpaid customers
 const sendUnpaidCustomers = async (req, res) => {

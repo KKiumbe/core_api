@@ -20,7 +20,8 @@
     "node-schedule": "^2.1.1",
     "npm": "^10.9.0",
     "pdfkit": "^0.15.1",
-    "prisma": "^5.21.0"
+    "prisma": "^5.21.0",
+    "uuid": "^11.0.2"
   },
   "engines": {
     "node": "20.x"

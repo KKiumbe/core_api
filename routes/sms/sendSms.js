@@ -41,7 +41,7 @@ const sendSmsWithBalanceCheck = async (smsPayload) => {
     return response.data;
 };
 
-// Function to sanitize the phone number
+// Function to sanitize the phone numb er
 const sanitizePhoneNumber = (phone) => {
     if (typeof phone !== 'string') {
         console.error('Invalid phone number format:', phone);
@@ -67,8 +67,10 @@ const getCurrentMonthName = () => {
 };
 
 // Send SMS to a group of customers
+
+
 router.post('/send-to-group', async (req, res) => {
-    const { day, message } = req.body; // Get the day and message from the request body
+    const { day, message } = req.body;
 
     // Validate request body
     if (!day || !message) {
@@ -79,38 +81,67 @@ router.post('/send-to-group', async (req, res) => {
         // Fetch customers for the specified collection day
         const customers = await prisma.customer.findMany({
             where: {
-                garbageCollectionDay: day.toUpperCase(), // Ensure the day is in the correct format
-                status: 'ACTIVE', // Only fetch active customers
+                garbageCollectionDay: day.toUpperCase(),
+                status: 'ACTIVE',
             },
         });
 
-        // Prepare SMS payload for each recipient
-        const smsList = customers.map((customer) => {
-            const mobile = sanitizePhoneNumber(customer.phoneNumber);
-            return {
-                partnerID: PARTNER_ID,
-                apikey: SMS_API_KEY,
-                pass_type: "plain",
-                clientsmsid: Math.floor(Math.random() * 10000), // Ensure this is unique if required
-                mobile: mobile,
-                message: message,
-                shortcode: SHORTCODE,
-            };
-        });
+        // Prepare SMS payload for each recipient and add to the database
+        const smsList = await Promise.all(
+            customers.map(async (customer) => {
+                const mobile = sanitizePhoneNumber(customer.phoneNumber);
+                const clientsmsid = Math.floor(Math.random() * 10000);
+
+                // Save each SMS to the database with status "pending"
+                await prisma.sms.create({
+                    data: {
+                        clientsmsid,
+                        customerId: customer.id,
+                        mobile,
+                        message,
+                        status: 'pending',
+                    },
+                });
+
+                // Return the SMS payload for sending
+                return {
+                    partnerID: process.env.PARTNER_ID,
+                    apikey: process.env.SMS_API_KEY,
+                    pass_type: "plain",
+                    clientsmsid,
+                    mobile,
+                    message,
+                    shortcode: process.env.SHORTCODE,
+                };
+            })
+        );
 
         // Send the bulk SMS
         const response = await sendSmsWithBalanceCheck(smsList);
 
-    
+        if (response.data.success) {
+            // Extract sent message IDs to update their status to "sent"
+            const sentIds = smsList.map(sms => sms.clientsmsid);
+
+            // Update the SMS status to "sent" in the database
+            await prisma.sms.updateMany({
+                where: { clientsmsid: { in: sentIds } },
+                data: { status: 'sent' }
+            });
+
+            console.log(`Updated status to 'sent' for ${sentIds.length} SMS records.`);
+        }
 
         console.log(`Sent ${smsList.length} bulk SMS messages.`);
         return res.status(200).json({ message: `Sent ${smsList.length} SMS messages.`, data: response.data });
+
     } catch (error) {
         console.error('Error sending bulk SMS:', error);
         const errorMessage = error.response ? error.response.data : 'Failed to send SMS.';
         return res.status(500).json({ error: errorMessage });
     }
 });
+
 
 
 

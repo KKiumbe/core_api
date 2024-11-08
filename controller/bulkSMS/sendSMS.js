@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { v4: uuidv4 } = require('uuid');
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
@@ -16,15 +17,14 @@ async function checkSmsBalance() {
   }
 }
 
+
 async function generateBulkBillSmsMessage() {
   const ENDPOINT = process.env.BULK_SMS_ENDPOINT;
 
   try {
     // Fetch active customers
     const activeCustomers = await prisma.customer.findMany({
-      where: {
-        status: 'ACTIVE'
-      }
+      where: { status: 'ACTIVE' }
     });
 
     // Check SMS balance before proceeding
@@ -40,36 +40,28 @@ async function generateBulkBillSmsMessage() {
     // Prepare the bulk SMS request body
     const smsList = await Promise.all(
       activeCustomers.map(async (customer) => {
-        // Fetch latest invoice for the customer
         const latestInvoice = await prisma.invoice.findFirst({
-          where: {
-            customerId: customer.id
-          },
-          orderBy: {
-            createdAt: 'desc' // Get the most recent invoice
-          }
+          where: { customerId: customer.id },
+          orderBy: { createdAt: 'desc' }
         });
 
-        // If no invoice exists, skip sending an SMS for this customer
-        if (!latestInvoice) {
-          return null;
-        }
+        if (!latestInvoice) return null;
 
-        // Prepare message content
         const currentMonthBill = latestInvoice.invoiceAmount;
         const closingBalance = latestInvoice.closingBalance;
         const customerName = `${customer.firstName} ${customer.lastName}`;
         const month = new Date().toLocaleString('default', { month: 'long' });
 
-        // Format phone number
         const mobile = customer.phoneNumber.startsWith('0')
-          ? `254${customer.phoneNumber.slice(1)}` // If it starts with '0', replace it with '254'
+          ? `254${customer.phoneNumber.slice(1)}`
           : customer.phoneNumber.startsWith('+')
-          ? customer.phoneNumber.slice(1) // If it starts with '+', remove the '+'
-          : customer.phoneNumber; // Otherwise, use the number as-is
+          ? customer.phoneNumber.slice(1)
+          : customer.phoneNumber;
 
-        const message = `Dear ${customerName}, your ${month} bill is ${currentMonthBill}, your previous balance is ${closingBalance - currentMonthBill}, and your total balance is ${closingBalance}. Help us server you better by always paying on time. Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923`;
+        const message = `Dear ${customerName}, your ${month} bill is ${currentMonthBill}, your previous balance is ${closingBalance - currentMonthBill}, and your total balance is ${closingBalance}. Help us serve you better by always paying on time. Paybill No :4107197 , your phone number as the account number. Customer support: 0726594923.`;
 
+      
+        const clientsmsid = uuidv4();
 
         await prisma.sms.create({
           data: {
@@ -85,26 +77,37 @@ async function generateBulkBillSmsMessage() {
           partnerID: process.env.PARTNER_ID,
           apikey: process.env.SMS_API_KEY,
           pass_type: "plain",
-          clientsmsid: Math.floor(Math.random() * 10000),
-          mobile: mobile,
-          message: message,
+          clientsmsid,
+          mobile,
+          message,
           shortcode: process.env.SHORTCODE,
         };
       })
     );
 
-    // Filter out any null results (customers without invoices)
     const filteredSmsList = smsList.filter(sms => sms !== null);
 
-    // Send the bulk SMS if there are any messages to send
     if (filteredSmsList.length > 0) {
       const response = await axios.post(ENDPOINT, {
         count: filteredSmsList.length,
         smslist: filteredSmsList
       });
 
+      if (response.data.success) {
+        const sentIds = filteredSmsList.map(sms => sms.clientsmsid);
+
+        // Update SMS status to "sent" in the database
+        await prisma.sms.updateMany({
+          where: { clientsmsid: { in: sentIds } },
+          data: { status: 'sent' }
+        });
+
+        console.log(`Updated status to 'sent' for ${sentIds.length} SMS records.`);
+      }
+
       console.log(`Sent ${filteredSmsList.length} bulk SMS messages.`);
       return response.data;
+
     } else {
       console.log('No active customers with invoices to send SMS.');
       return null;
