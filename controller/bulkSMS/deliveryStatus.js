@@ -2,7 +2,7 @@ const axios = require('axios');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-
+const ENDPOINT = process.env.SMS_DELIVERY_REPORT;
 
 
 // Function to update SMS delivery status
@@ -13,7 +13,7 @@ async function updateSmsDeliveryStatus(req, res) {
     return res.status(400).json({ success: false, message: 'clientsmsid is required' });
   }
 
-  const ENDPOINT = process.env.SMS_DELIVERY_REPORT;
+
 
   console.log(ENDPOINT);
 
