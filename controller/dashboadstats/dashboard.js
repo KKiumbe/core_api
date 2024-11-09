@@ -20,7 +20,7 @@ const getDashboardStats = async (req, res) => {
     ).length;
 
     const unpaidCustomers = activeCustomers.filter(customer => 
-      customer.closingBalance >= 0 && customer.closingBalance < customer.monthlyCharge // Customers who owe money (closing balance less than 15% of monthly charge)
+      customer.closingBalance > 0 // Customers who owe money (closing balance less than 15% of monthly charge)
     ).length;
 
     const lowBalanceCustomers = activeCustomers.filter(customer => 
