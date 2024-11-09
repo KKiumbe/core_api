@@ -24,7 +24,7 @@ const getDashboardStats = async (req, res) => {
     ).length;
 
     const lowBalanceCustomers = activeCustomers.filter(customer => 
-      customer.closingBalance < customer.monthlyCharge * 0.5 // Customers with closing balance less than their monthly charge
+      customer.closingBalance < customer.monthlyCharge  // Customers with closing balance less than their monthly charge
     ).length;
 
     const highBalanceCustomers = activeCustomers.filter(customer => 

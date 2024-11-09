@@ -102,7 +102,7 @@ const sendUnpaidCustomers = async (req, res) => {
         });
 
         const unpaidCustomers = activeCustomers.filter(customer => 
-            customer.closingBalance >= customer.monthlyCharge * 0.15 // 15% of monthly charge
+            customer.closingBalance > 0 
         );
 
         const customersWithMessages = unpaidCustomers.map(customer => ({
@@ -182,7 +182,7 @@ const sendHighBalanceCustomers = async (req, res) => {
         });
 
         const highBalanceCustomers = activeCustomers.filter(customer => 
-            customer.closingBalance > customer.monthlyCharge * 2
+            customer.closingBalance > customer.monthlyCharge * 1.5
         );
 
         const customersWithMessages = highBalanceCustomers.map(customer => ({
