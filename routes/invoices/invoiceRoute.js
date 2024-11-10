@@ -1,6 +1,6 @@
 const express = require('express');
 const { verifyToken } = require('../../middleware/verifyToken.js');
-const { getAllInvoices, generateInvoices, cancelInvoiceById, createInvoice, getInvoiceDetails } = require('../../controller/bill/billGenerator.js');
+const { getAllInvoices, generateInvoices, cancelInvoiceById, createInvoice, getInvoiceDetails, generateInvoicesByDay } = require('../../controller/bill/billGenerator.js');
 const { SearchInvoices } = require('../../controller/bill/searchInvoice.js');
 const { addSmsJob } = require('../../controller/bulkSMS/sendSMSJob.js');
 const { cancelSystemGenInvoices } = require('../../controller/bill/cancelJob.js');
@@ -24,6 +24,8 @@ router.post('/send-bulk-sms', addSmsJob);
 
 // Route to generate invoices for all active customers for a specified month
 router.post('/invoices/generate', verifyToken,generateInvoices);
+
+router.post('/invoices-generate-day',generateInvoicesByDay)
 
 
 

@@ -1,5 +1,4 @@
 const axios = require('axios');
-const { v4: uuidv4 } = require('uuid');
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
@@ -17,18 +16,22 @@ async function checkSmsBalance() {
   }
 }
 
-async function generateBulkBillSmsMessage() {
+async function generateBulkBillSmsMessageByDay(day) {
   const ENDPOINT = process.env.BULK_SMS_ENDPOINT;
+ 
 
   try {
-    // Fetch active customers
-    const activeCustomers = await prisma.customer.findMany({
-      where: { status: 'ACTIVE' }
+    // Fetch active customers whose garbageCollectionDay matches the given day
+    const customers = await prisma.customer.findMany({
+      where: {
+        status: 'ACTIVE',
+        garbageCollectionDay: day, // Filter by garbageCollectionDay
+      }
     });
 
     // Check SMS balance before proceeding
     const balance = await checkSmsBalance();
-    const customerCount = activeCustomers.length;
+    const customerCount = customers.length;
 
     // Check if the balance is sufficient (at least twice the number of customers)
     if (balance < customerCount * 2) {
@@ -38,7 +41,7 @@ async function generateBulkBillSmsMessage() {
 
     // Prepare the bulk SMS request body
     const smsList = await Promise.all(
-      activeCustomers.map(async (customer) => {
+      customers.map(async (customer) => {
         const latestInvoice = await prisma.invoice.findFirst({
           where: { customerId: customer.id },
           orderBy: { createdAt: 'desc' }
@@ -136,4 +139,4 @@ function generateSanitizedMessage(customerName, currentMonthBill, closingBalance
   return `Dear ${customerName}, your ${month} bill is KSH${currentMonthBill}. ${balanceMessage} Help us serve you better by always paying on time. Paybill No: 4107197, use your phone number as the account number. Customer support: 0726594923.`;
 }
 
-module.exports = { generateBulkBillSmsMessage };
+module.exports = { generateBulkBillSmsMessageByDay };

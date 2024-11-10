@@ -1,6 +1,7 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const axios = require('axios');
+const { generateBulkBillSmsMessageByDay } = require('../../controller/bulkSMS/sendBillsPerDay');
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -477,6 +478,25 @@ router.post('/send-bill', async (req, res) => {
         res.status(500).json({ error: error.response ? error.response.data : 'Failed to send bill.' });
     }
 });
+
+
+
+
+
+
+router.post('/send-bill-perday', async (req, res) => {
+    try {
+      const { day } = req.body; // Day passed in the request body
+      if (!day) {
+        return res.status(400).json({ error: 'Day is required' });
+      }
+  
+      const result = await generateBulkBillSmsMessageByDay(day);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 
 
 

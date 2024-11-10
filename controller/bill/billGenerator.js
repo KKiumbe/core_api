@@ -1,4 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
+//const { GarbageCollectionDay } = require('./enum.js'); // Adjust the path if needed
+
 const schedule = require('node-schedule'); // For scheduling jobs
 const invoiceQueue = require('./jobFunction.js');
 const prisma = new PrismaClient();
@@ -117,6 +119,104 @@ async function generateInvoices() {
 
   return transaction;
 }
+
+
+
+
+
+// Controller function to handle invoice generation based on collection day
+const generateInvoicesByDay = async (req, res) => {
+  const { collectionDay } = req.body;
+
+
+
+  try {
+    // Call helper function to generate invoices
+    const invoices = await generateInvoicesForDay(collectionDay);
+    res.status(200).json({ message: "Invoices generated successfully", invoices });
+  } catch (error) {
+    console.error("Error generating invoices:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Helper function to generate invoices for a specific collection day
+const generateInvoicesForDay = async (day) => {
+  const currentMonth = new Date().getMonth() + 1;
+
+
+    const customers = await prisma.customer.findMany({
+      where: {
+        status: 'ACTIVE',
+        garbageCollectionDay:day
+      }
+    });
+
+    const invoices = await Promise.all(
+      customers.map(async (customer) => {
+        const invoiceNumber = generateInvoiceNumber(customer.id);
+        const invoicePeriod = new Date(new Date().getFullYear(), currentMonth - 1, 1);
+        const currentClosingBalance = await getCurrentClosingBalance(customer.id);
+        const currentMonthBill = await getCurrentMonthBill(customer.id);
+        const invoiceAmount = currentMonthBill;
+
+        let status = 'UNPAID';
+        const newClosingBalance = currentClosingBalance + invoiceAmount;
+
+        if (newClosingBalance < 0 && Math.abs(currentClosingBalance) >= invoiceAmount) {
+          status = 'PAID';
+        } else if (newClosingBalance === 0) {
+          status = 'PAID';
+        } else if (newClosingBalance > 0 && newClosingBalance < invoiceAmount) {
+          status = 'PPAID';
+        } else {
+          status = 'UNPAID';
+        }
+
+        const newInvoice = await prisma.invoice.create({
+          data: {
+            customerId: customer.id,
+            invoiceNumber,
+            invoicePeriod,
+            closingBalance: newClosingBalance,
+            invoiceAmount,
+            status,
+            isSystemGenerated: true,
+          },
+        });
+
+        if (invoiceAmount > 0) {
+          await prisma.invoiceItem.create({
+            data: {
+              invoiceId: newInvoice.id,
+              description: 'Monthly Charge',
+              amount: invoiceAmount,
+              quantity: 1,
+            },
+          });
+        }
+
+        await prisma.customer.update({
+          where: { id: customer.id },
+          data: { closingBalance: newClosingBalance },
+        });
+
+        return newInvoice;
+      })
+    );
+
+ 
+};
+
+
+
+
+
+
+
+
+
+
 
 
 // Create a manual invoice for a customer
@@ -407,4 +507,5 @@ module.exports = {
   getInvoiceDetails,
   getCurrentClosingBalance,
   getCurrentMonthBill,
+  generateInvoicesByDay
 };
