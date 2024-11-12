@@ -9,6 +9,8 @@ const { settleInvoice } = require('../../controller/mpesa/paymentSettlement.js')
 router.post('/callback', async (req, res) => {
     const paymentData = req.body; // M-Pesa sends the payment details in the body
 
+    console.log(paymentData);
+
     if (!paymentData) {
         return res.status(400).json({ message: 'No payment data received' });
     }
