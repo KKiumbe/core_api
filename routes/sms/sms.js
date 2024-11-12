@@ -1,4 +1,6 @@
 const axios = require('axios');
+const { PrismaClient } = require('@prisma/client'); // Import Prisma Client
+const prisma = new PrismaClient(); // Initialize Prisma Client
 
 // Load environment variables
 const SMS_API_KEY = process.env.SMS_API_KEY;
@@ -22,7 +24,7 @@ const checkSmsBalance = async () => {
 };
 
 // Function to send SMS with balance check
-const sendSMS = async (sanitisedNumber, message) => {
+const sendSMS = async (sanitisedNumber, message, customer) => {
     console.log(`Sanitised number is ${sanitisedNumber}`);
 
     try {
@@ -31,6 +33,20 @@ const sendSMS = async (sanitisedNumber, message) => {
         if (balance < 1) {
             throw new Error('Insufficient SMS balance');
         }
+
+        // Generate a unique `clientsmsid` for tracking
+        const clientsmsid = Math.floor(Math.random() * 1000000);
+
+        // Create an SMS record with initial status 'pending'
+        const smsRecord = await prisma.sms.create({
+            data: {
+                clientsmsid,
+                customerId: customer.id,
+                mobile: sanitisedNumber,
+                message,
+                status: 'pending',
+            },
+        });
 
         const payload = {
             partnerID: PARTNER_ID,
@@ -42,15 +58,30 @@ const sendSMS = async (sanitisedNumber, message) => {
 
         console.log(`This is payload: ${JSON.stringify(payload)}`);
 
+        // Send the SMS
         const response = await axios.post(SMS_ENDPOINT, payload);
         console.log(`SMS sent to ${sanitisedNumber}: ${message}`);
+
+        // Update SMS record status to 'sent' after successful send
+        await prisma.sms.update({
+            where: { id: smsRecord.id },
+            data: { status: 'sent' },
+        });
+
         return response.data; // Return the response for further processing if needed
     } catch (error) {
         console.error('Error sending SMS:', error);
+
+        // Update SMS record status to 'failed' if there's an error
+        await prisma.sms.update({
+            where: { clientsmsid },
+            data: { status: 'failed' },
+        });
+
         throw new Error(error.response ? error.response.data : 'Failed to send SMS.');
     }
 };
 
 module.exports = {
-    sendSMS
+    sendSMS,
 };
