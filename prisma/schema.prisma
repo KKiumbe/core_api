@@ -137,6 +137,7 @@ model Payment {
   id                      String      @id @default(auto()) @map("_id") @db.ObjectId
   amount                  Float
   modeOfPayment           ModeOfPayment
+  firstName                String ?
   receipted               Boolean     @default(false)
   TransactionId      String?   @unique 
    Ref            String?  
