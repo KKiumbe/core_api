@@ -15,7 +15,7 @@ const MpesaPaymentSettlement = async (req, res) => {
     }
 
     try {
-        await prisma.$transaction(async (prisma) => {
+      
             // Retrieve customer data
             const customer = await prisma.customer.findUnique({
                 where: { id: customerId },
@@ -136,7 +136,7 @@ const MpesaPaymentSettlement = async (req, res) => {
             const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} for garbage collection services received successfully. ${balanceMessage}. Always use your phone number as the account number, Thank you!`;
             const sanitizedNumber = sanitizePhoneNumber(customer.phoneNumber);
             await sendSMS(sanitizedNumber, message);
-        });
+     
 
     } catch (error) {
         console.error('Error processing payment:', error);
