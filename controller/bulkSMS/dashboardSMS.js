@@ -27,7 +27,8 @@ const sendBulkSMS = async (customers) => {
         // Map customer data and insert into `sms` collection with status "pending"
         const smsList = await Promise.all(
             customers.map(async (customer) => {
-                const clientsmsid = uuidv4();
+              
+                const clientsmsid = Math.floor(Math.random() * 1000000);
 
                 // Save each SMS to the database with status "pending"
                 await prisma.sms.create({
