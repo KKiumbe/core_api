@@ -37,7 +37,7 @@ const sendBulkSMS = async (customers) => {
                         customerId: customer.id,
                         mobile: customer.phoneNumber,
                         message: customer.message,
-                        status: 'pending',
+                        status: 'sent',
                     },
                 });
 
