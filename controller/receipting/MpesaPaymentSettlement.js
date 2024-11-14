@@ -177,18 +177,18 @@ const MpesaPaymentSettlement = async (req, res) => {
 
 
 // Function to check SMS balance
-const checkSmsBalance = async () => {
-    try {
-        const response = await axios.post(SMS_BALANCE_URL, {
-            apikey: SMS_API_KEY,
-            partnerID: PARTNER_ID
-        });
-        return response.data.balance; // Adjust this based on actual response structure
-    } catch (error) {
-        console.error('Error fetching SMS balance:', error);
-        throw new Error('Failed to retrieve SMS balance');
-    }
-};
+// const checkSmsBalance = async () => {
+//     try {
+//         const response = await axios.post(SMS_BALANCE_URL, {
+//             apikey: SMS_API_KEY,
+//             partnerID: PARTNER_ID
+//         });
+//         return response.data.balance; // Adjust this based on actual response structure
+//     } catch (error) {
+//         console.error('Error fetching SMS balance:', error);
+//         throw new Error('Failed to retrieve SMS balance');
+//     }
+// };
 
 // Function to send SMS with balance check
 const sendSMS = async (text, customer) => {
@@ -201,10 +201,10 @@ const sendSMS = async (text, customer) => {
         const clientsmsid = Math.floor(Math.random() * 1000000);
 
         // Check SMS balance
-        const balance = await checkSmsBalance();
-        if (balance < 1) {
-            throw new Error('Insufficient SMS balance');
-        }
+        // const balance = await checkSmsBalance();
+        // if (balance < 1) {
+        //     throw new Error('Insufficient SMS balance');
+        // }
 
         // Create an SMS record with initial status 'pending'
         const smsRecord = await prisma.sms.create({
