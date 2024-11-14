@@ -144,9 +144,9 @@ const MpesaPaymentSettlement = async (req, res) => {
                 ? `Your closing balance is an overpayment of KES ${Math.abs(finalClosingBalance)}`
                 : `Your closing balance is KES ${finalClosingBalance}`;
             const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} for garbage collection services received successfully. ${balanceMessage}. Always use your phone number as the account number, Thank you!`;
-           const mobile = customer.phoneNumber;
+           //const mobile = customer.phoneNumber;
            
-            await sendSMS(message,customer,mobile);
+            await sendSMS(message,customer);
      
 
     } catch (error) {
@@ -191,13 +191,20 @@ const checkSmsBalance = async () => {
 };
 
 // Function to send SMS with balance check
-
-const sendSMS = async (message, customer, mobile) => {
+const sendSMS = async (message, customer) => {
     try {
-        // Define `clientsmsid` within this function to avoid scope issues
+        // Make sure customer.phoneNumber is valid before proceeding
+        if (!customer.phoneNumber) {
+            throw new Error("Customer's phone number is missing.");
+        }
+
+        // Set mobile number
+        const mobile = customer.phoneNumber;
+
+        // Generate a unique clientsmsid for tracking
         const clientsmsid = Math.floor(Math.random() * 1000000);
 
-        // Check if there is at least 1 SMS balance before sending
+        // Check SMS balance
         const balance = await checkSmsBalance();
         if (balance < 1) {
             throw new Error('Insufficient SMS balance');
@@ -208,7 +215,7 @@ const sendSMS = async (message, customer, mobile) => {
             data: {
                 clientsmsid,
                 customerId: customer.id,
-                mobile,       // Ensure `mobile` is correctly assigned here
+                mobile, // Ensure `mobile` is correctly passed here
                 message,
                 status: 'pending',
             },
@@ -231,15 +238,17 @@ const sendSMS = async (message, customer, mobile) => {
             data: { status: 'sent' },
         });
 
-        return response.data;
+        return response.data; // Optionally, return response data
     } catch (error) {
         console.error('Error sending SMS:', error);
 
-        // Update SMS record status to 'failed' if there's an error
-        await prisma.sms.update({
-            where: { clientsmsid },
-            data: { status: 'failed' },
-        });
+        // If there's an error, update SMS status to 'failed'
+        if (clientsmsid) {
+            await prisma.sms.update({
+                where: { clientsmsid },
+                data: { status: 'failed' },
+            });
+        }
 
         throw new Error(error.response ? error.response.data : 'Failed to send SMS.');
     }
