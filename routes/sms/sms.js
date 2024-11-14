@@ -24,7 +24,7 @@ const checkSmsBalance = async () => {
 };
 
 // Function to send SMS with balance check
-const sendSMS = async (sanitisedNumber, message, customer) => {
+const sendSMS = async (message, customer) => {
     console.log(`Sanitised number is ${sanitisedNumber}`);
 
     try {
@@ -42,7 +42,7 @@ const sendSMS = async (sanitisedNumber, message, customer) => {
             data: {
                 clientsmsid,
                 customerId: customer.id,
-                mobile: sanitisedNumber,
+                mobile: customer.phoneNumber,
                 message,
                 status: 'pending',
             },
@@ -51,7 +51,7 @@ const sendSMS = async (sanitisedNumber, message, customer) => {
         const payload = {
             partnerID: PARTNER_ID,
             apikey: SMS_API_KEY,
-            mobile: sanitisedNumber,
+            mobile: customer.phoneNumber,
             message,
             shortcode: SHORTCODE,
         };
