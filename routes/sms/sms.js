@@ -1,5 +1,4 @@
 const axios = require('axios');
-
 const { PrismaClient } = require('@prisma/client'); // Import Prisma Client
 const prisma = new PrismaClient(); // Initialize Prisma Client
 
@@ -40,8 +39,8 @@ const sendSMS = async (message, customer) => {
         const mobile = customer.phoneNumber;
         const customerId = customer.id;
 
-        // Convert the `message` to a string (just in case it's passed as an object)
-        const smsMessage = String(message);  // Ensure message is a string
+        // Convert the `message` to a string (ensure it's properly stringified if it's an object)
+        const smsMessage = typeof message === 'object' ? JSON.stringify(message) : String(message);  // Ensure message is a string
 
         // Create an SMS record with initial status 'pending'
         const smsRecord = await prisma.sms.create({
@@ -67,11 +66,14 @@ const sendSMS = async (message, customer) => {
         // Send the SMS
         const response = await axios.post(SMS_ENDPOINT, payload);
 
-        // Update SMS record status to 'sent' after successful send
-        await prisma.sms.update({
-            where: { id: smsRecord.id },
-            data: { status: 'sent' },
-        });
+        // Ensure the smsRecord exists before trying to update
+        if (smsRecord && smsRecord.id) {
+            // Update SMS record status to 'sent' after successful send
+            await prisma.sms.update({
+                where: { id: smsRecord.id },
+                data: { status: 'sent' },
+            });
+        }
 
         return response.data; // Return the response for further processing if needed
     } catch (error) {
