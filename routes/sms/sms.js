@@ -40,7 +40,7 @@ const sendSMS = async (message, customer) => {
         const mobile = customer.phoneNumber;
 
         // Construct the message string dynamically
-        const smsMessage = `Dear ${customer.firstName}, payment of KES ${message.paymentAmount} received successfully. Your Current balance is KES ${customer.closingBalance}. Help us serve you better by using Paybill No: 4107197, your phone number as the account number. Customer support number: 0726594923`;
+        //const smsMessage = `Dear ${customer.firstName}, payment of KES ${message.paymentAmount} received successfully. Your Current balance is KES ${customer.closingBalance}. Help us serve you better by using Paybill No: 4107197, your phone number as the account number. Customer support number: 0726594923`;
 
         // Create an SMS record with initial status 'pending'
         const smsRecord = await prisma.sms.create({
@@ -48,7 +48,7 @@ const sendSMS = async (message, customer) => {
                 clientsmsid,
                 customerId: customer.id,
                 mobile,
-                message: smsMessage,  // Ensure this is a string, not an object
+                message: message,  // Ensure this is a string, not an object
                 status: 'pending',
             },
         });
