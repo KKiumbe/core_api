@@ -197,7 +197,7 @@ const sendSMS = async (text, customer) => {
             throw new Error("Customer's phone number is missing.");
         }
 
-        const mobile = customer.phoneNumber.toString(); // Ensure mobile is a string with the phone number
+        const mobile = customer.phoneNumber; // Ensure mobile is a string with the phone number
         const clientsmsid = Math.floor(Math.random() * 1000000);
 
         // Check SMS balance
