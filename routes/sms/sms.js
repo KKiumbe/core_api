@@ -24,7 +24,7 @@ const checkSmsBalance = async () => {
 };
 
 // Function to send SMS with balance check
-const sendSMS = async (message, customer,mobile) => {
+const sendSMS = async (message, customer) => {
   
 
     try {
@@ -36,13 +36,14 @@ const sendSMS = async (message, customer,mobile) => {
 
         // Generate a unique `clientsmsid` for tracking
         const clientsmsid = Math.floor(Math.random() * 1000000);
+        const mobile = customer.phoneNumber;
 
         // Create an SMS record with initial status 'pending'
         const smsRecord = await prisma.sms.create({
             data: {
                 clientsmsid,
                 customerId: customer.id,
-                mobile: mobile,
+                mobile,
                 message,
                 status: 'pending',
             },

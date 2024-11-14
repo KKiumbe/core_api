@@ -118,9 +118,9 @@ async function settleInvoice() {
                 : `Your Current balance is KES ${finalClosingBalance}`;
 
             const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. ${formattedBalanceMessage}. Help us server you better by using Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923`;
-            const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber);
+            //const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber);
 
-            await sendSMS(sanitisedNumber, message);
+            await sendSMS(message,customer);
             console.log(`Processed payment and created receipt for transaction ${MpesaCode}.`);
         }
     } catch (error) {
@@ -129,9 +129,14 @@ async function settleInvoice() {
 }
 
 async function processInvoices(paymentAmount, customerId, paymentId) {
-    // Fetch unpaid invoices
+    // Fetch unpaid and partially paid invoices
     const invoices = await prisma.invoice.findMany({
-        where: { customerId, status: 'UNPAID' },
+        where: {
+            customerId,
+            status: {
+                in: ['UNPAID', 'PPAID'], // We are only interested in unpaid or partially paid invoices
+            },
+        },
     });
 
     let remainingAmount = paymentAmount;
@@ -143,7 +148,7 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
         data: { receipted: true },
     });
 
-    // Scenario: No unpaid invoices
+    // If no unpaid or partially paid invoices
     if (invoices.length === 0) {
         const customer = await prisma.customer.findUnique({
             where: { id: customerId },
@@ -161,18 +166,19 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
         return { receipts, remainingAmount: 0, newClosingBalance };
     }
 
-    // Apply payment across unpaid invoices if any exist
+    // Apply payment across unpaid and partially paid invoices
     for (const invoice of invoices) {
         if (remainingAmount <= 0) break;
 
         const invoiceDueAmount = invoice.invoiceAmount - invoice.amountPaid;
         const paymentForInvoice = Math.min(remainingAmount, invoiceDueAmount);
 
+        // Update the invoice with the paid amount
         const updatedInvoice = await prisma.invoice.update({
             where: { id: invoice.id },
             data: {
                 amountPaid: invoice.amountPaid + paymentForInvoice,
-                status: invoice.amountPaid + paymentForInvoice >= invoice.invoiceAmount ? 'PAID' : 'UNPAID',
+                status: invoice.amountPaid + paymentForInvoice >= invoice.invoiceAmount ? 'PAID' : 'PPAID', // Set to PAID if fully paid
             },
         });
 
@@ -181,16 +187,14 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
         totalPaidAmount += paymentForInvoice;
     }
 
-    // Fetch customer’s updated closing balance after processing invoices
+    // Fetch the customer's closing balance after processing invoices
     const customer = await prisma.customer.findUnique({
         where: { id: customerId },
         select: { closingBalance: true },
     });
 
-    // Calculate new closing balance
-    const newClosingBalance = remainingAmount > 0
-        ? customer.closingBalance - totalPaidAmount + remainingAmount // Apply overpayment if any
-        : customer.closingBalance - totalPaidAmount;
+    // Calculate the new closing balance after applying the payment
+    const newClosingBalance = customer.closingBalance - totalPaidAmount;
 
     // Update customer's closing balance
     await prisma.customer.update({
