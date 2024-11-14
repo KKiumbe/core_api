@@ -143,10 +143,10 @@ const MpesaPaymentSettlement = async (req, res) => {
             const balanceMessage = finalClosingBalance < 0
                 ? `Your closing balance is an overpayment of KES ${Math.abs(finalClosingBalance)}`
                 : `Your closing balance is KES ${finalClosingBalance}`;
-            const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} for garbage collection services received successfully. ${balanceMessage}. Always use your phone number as the account number, Thank you!`;
+            const text = `Dear ${customer.firstName}, payment of KES ${totalAmount} for garbage collection services received successfully. ${balanceMessage}. Always use your phone number as the account number, Thank you!`;
            //const mobile = customer.phoneNumber;
            
-            await sendSMS(message,customer);
+            await sendSMS(text,customer);
      
 
     } catch (error) {
@@ -191,7 +191,7 @@ const checkSmsBalance = async () => {
 };
 
 // Function to send SMS with balance check
-const sendSMS = async (message, customer) => {
+const sendSMS = async (text, customer) => {
     try {
         if (!customer.phoneNumber) {
             throw new Error("Customer's phone number is missing.");
@@ -212,7 +212,7 @@ const sendSMS = async (message, customer) => {
                 clientsmsid,
                 customerId: customer.id,
                 mobile, // Correctly set the phone number
-                message, // Correctly set the message content
+                message:text, // Correctly set the message content
                 status: 'pending',
             },
         });
@@ -221,7 +221,7 @@ const sendSMS = async (message, customer) => {
             partnerID: PARTNER_ID,
             apikey: SMS_API_KEY,
             mobile,      // Customer's phone number
-            message,     // Actual SMS message content
+            message:text,     // Actual SMS message content
             shortcode: SHORTCODE,
         };
 
