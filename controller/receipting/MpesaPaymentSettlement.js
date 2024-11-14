@@ -197,20 +197,22 @@ const sendSMS = async (message, customer) => {
             throw new Error("Customer's phone number is missing.");
         }
 
-        const mobile = customer.phoneNumber.toString(); // Ensure `mobile` is a string
+        const mobile = customer.phoneNumber.toString(); // Ensure `mobile` is a string containing the phone number
         const clientsmsid = Math.floor(Math.random() * 1000000);
 
+        // Check SMS balance
         const balance = await checkSmsBalance();
         if (balance < 1) {
             throw new Error('Insufficient SMS balance');
         }
 
+        // Create an SMS record with initial status 'pending'
         const smsRecord = await prisma.sms.create({
             data: {
                 clientsmsid,
                 customerId: customer.id,
-                mobile, // Set mobile number correctly
-                message, // Ensure message contains the actual text
+                mobile, // Correctly set the phone number
+                message, // Correctly set the message content
                 status: 'pending',
             },
         });
@@ -218,8 +220,8 @@ const sendSMS = async (message, customer) => {
         const payload = {
             partnerID: PARTNER_ID,
             apikey: SMS_API_KEY,
-            mobile,      // Set this to the customer's phone number
-            message,     // Set this to the actual message content
+            mobile,      // Customer's phone number
+            message,     // Actual SMS message content
             shortcode: SHORTCODE,
         };
 
@@ -228,15 +230,17 @@ const sendSMS = async (message, customer) => {
 
         const response = await axios.post(SMS_ENDPOINT, payload);
 
+        // Update SMS record status to 'sent' after successful send
         await prisma.sms.update({
             where: { id: smsRecord.id },
             data: { status: 'sent' },
         });
 
-        return response.data;
+        return response.data; // Optionally, return response data
     } catch (error) {
         console.error('Error sending SMS:', error);
 
+        // If there's an error, update SMS status to 'failed'
         if (clientsmsid) {
             await prisma.sms.update({
                 where: { clientsmsid },
