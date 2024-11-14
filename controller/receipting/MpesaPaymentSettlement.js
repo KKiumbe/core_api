@@ -193,15 +193,15 @@ const checkSmsBalance = async () => {
 // Function to send SMS with balance check
 const sendSMS = async (message, customer) => {
     try {
-        // Make sure customer.phoneNumber is valid before proceeding
+        // Ensure customer.phoneNumber is valid
         if (!customer.phoneNumber) {
             throw new Error("Customer's phone number is missing.");
         }
 
-        // Set mobile number
-        const mobile = customer.phoneNumber;
+        // Assign `mobile` correctly as a string with customer’s phone number
+        const mobile = customer.phoneNumber.toString();
 
-        // Generate a unique clientsmsid for tracking
+        // Generate a unique `clientsmsid`
         const clientsmsid = Math.floor(Math.random() * 1000000);
 
         // Check SMS balance
@@ -210,12 +210,12 @@ const sendSMS = async (message, customer) => {
             throw new Error('Insufficient SMS balance');
         }
 
-        // Create an SMS record with initial status 'pending'
+        // Create an SMS record with `mobile` as a string
         const smsRecord = await prisma.sms.create({
             data: {
                 clientsmsid,
                 customerId: customer.id,
-                mobile, // Ensure `mobile` is correctly passed here
+                mobile, // Ensure `mobile` is the customer's phone number in string format
                 message,
                 status: 'pending',
             },
@@ -238,11 +238,11 @@ const sendSMS = async (message, customer) => {
             data: { status: 'sent' },
         });
 
-        return response.data; // Optionally, return response data
+        return response.data;
     } catch (error) {
         console.error('Error sending SMS:', error);
 
-        // If there's an error, update SMS status to 'failed'
+        // Update SMS status to 'failed' if there's an error
         if (clientsmsid) {
             await prisma.sms.update({
                 where: { clientsmsid },
