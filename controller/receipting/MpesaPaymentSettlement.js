@@ -114,7 +114,8 @@ const MpesaPaymentSettlement = async (req, res) => {
             }
 
             // Calculate the new closing balance
-            const finalClosingBalance = customer.closingBalance - totalAmount + remainingAmount;
+            //changes to scenarios of balance adding 
+            const finalClosingBalance = customer.closingBalance - totalAmount;
 
             // Update customer's closing balance
             await prisma.customer.update({
