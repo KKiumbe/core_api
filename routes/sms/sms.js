@@ -24,7 +24,7 @@ const checkSmsBalance = async () => {
 };
 
 // Function to send SMS with balance check
-const sendSMS = async (message, customer) => {
+const sendSMS = async (text, customer) => {
     let clientsmsid;  // Declare clientsmsid outside of try-catch block to avoid 'undefined' errors
 
     try {
@@ -47,7 +47,7 @@ const sendSMS = async (message, customer) => {
                 clientsmsid,
                 customerId,
                 mobile,
-                message,  // Ensure this is a string, not an object
+                message:text,  // Ensure this is a string, not an object
                 status: 'pending',
             },
         });
@@ -55,9 +55,9 @@ const sendSMS = async (message, customer) => {
         const payload = {
             partnerID: PARTNER_ID,
             apikey: SMS_API_KEY,
-            message,  // Ensure this is the correct message
+            message:text,  // Ensure this is the correct message
             shortcode: SHORTCODE,
-            mobile: mobile,
+            mobile: sanitizePhoneNumber(mobile),
         };
 
         console.log(`This is payload: ${JSON.stringify(payload)}`);
@@ -89,6 +89,25 @@ const sendSMS = async (message, customer) => {
         throw new Error(error.response ? error.response.data : 'Failed to send SMS.');
     }
 };
+
+
+function sanitizePhoneNumber(phone) {
+    if (typeof phone !== 'string') {
+        console.error('Invalid phone number format:', phone);
+        return '';
+    }
+
+    if (phone.startsWith('+254')) {
+        return phone.slice(1);
+    } else if (phone.startsWith('0')) {
+        return `254${phone.slice(1)}`;
+    } else if (phone.startsWith('254')) {
+        return phone;
+    } else {
+        return `254${phone}`;
+    }
+}
+
 
 module.exports = {
     sendSMS,

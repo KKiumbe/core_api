@@ -106,12 +106,12 @@ const manualCashPayment = async (req, res) => {
    
 
 
-        const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. Your balance is ${newClosingBalance}. Help us serve you better by Always using Paybill No: 4107197, your phone number as the account number to pay your garbage collection bill. Customer support: 0726594923.`;
+        const text = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. Your balance is ${newClosingBalance}. Help us serve you better by Always using Paybill No: 4107197, your phone number as the account number to pay your garbage collection bill. Customer support: 0726594923.`;
         
         //const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber);
 
         // Send SMS
-        await sendSMS(customer,message);
+        await sendSMS(customer,text);
         //console.log(`SMS sent to ${sanitisedNumber}: ${message}`);
 
         res.status(201).json({
