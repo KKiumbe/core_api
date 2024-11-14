@@ -26,7 +26,7 @@ const checkSmsBalance = async () => {
 
 // Function to send SMS with balance check
 const sendSMS = async (message, customer) => {
-    let clientsmsid;  // Declare clientsmsid outside of try-catch block to avoid 'undefined' errors
+ // Declare clientsmsid outside of try-catch block to avoid 'undefined' errors
 
     try {
         // Check if there is at least 1 SMS balance before sending
