@@ -56,7 +56,7 @@ const sendSMS = async (message, customer) => {
         const payload = {
             partnerID: PARTNER_ID,
             apikey: SMS_API_KEY,
-            message: smsMessage,  // Ensure this is the correct message
+            message: message,  // Ensure this is the correct message
             shortcode: SHORTCODE,
             mobile: mobile,
         };
