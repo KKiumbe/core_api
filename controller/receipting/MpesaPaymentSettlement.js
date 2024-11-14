@@ -197,7 +197,7 @@ const sendSMS = async (text, customer) => {
             throw new Error("Customer's phone number is missing.");
         }
 
-        const mobile = customer.phoneNumber.toString(); // Ensure `mobile` is a string containing the phone number
+        const mobile = customer.phoneNumber.toString(); // Ensure mobile is a string with the phone number
         const clientsmsid = Math.floor(Math.random() * 1000000);
 
         // Check SMS balance
@@ -211,22 +211,22 @@ const sendSMS = async (text, customer) => {
             data: {
                 clientsmsid,
                 customerId: customer.id,
-                mobile, // Correctly set the phone number
-                message:text, // Correctly set the message content
+                mobile,
+                message: text,
                 status: 'pending',
             },
         });
 
+        // Construct the payload following the exact structure needed
         const payload = {
-            partnerID: PARTNER_ID,
             apikey: SMS_API_KEY,
-            mobile,      // Customer's phone number
-            message:text,     // Actual SMS message content
-            shortcode: SHORTCODE,
+            partnerID: PARTNER_ID,
+            message: text,        // Message content
+            shortcode: SHORTCODE,  // Sender ID or shortcode
+            mobile: mobile,        // Phone number in international format
         };
 
-        // Log payload to verify correctness
-        console.log("This is payload:", JSON.stringify(payload));
+        console.log("This is payload:", JSON.stringify(payload));  // Log to confirm correct payload format
 
         const response = await axios.post(SMS_ENDPOINT, payload);
 
@@ -236,11 +236,11 @@ const sendSMS = async (text, customer) => {
             data: { status: 'sent' },
         });
 
-        return response.data; // Optionally, return response data
+        return response.data;
     } catch (error) {
         console.error('Error sending SMS:', error);
 
-        // If there's an error, update SMS status to 'failed'
+        // Update SMS status to 'failed' if there's an error
         if (clientsmsid) {
             await prisma.sms.update({
                 where: { clientsmsid },
