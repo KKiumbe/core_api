@@ -12,6 +12,9 @@ function generateTransactionId() {
     return `C${randomDigits}`; // Prefix with "C"
 }
 
+
+
+
 const manualCashPayment = async (req, res) => {
     const { customerId, totalAmount, modeOfPayment, paidBy, paymentId } = req.body;
 
@@ -22,14 +25,13 @@ const manualCashPayment = async (req, res) => {
     try {
         const customer = await prisma.customer.findUnique({
             where: { id: customerId },
-            select: { phoneNumber: true, firstName: true, closingBalance: true }, // Fetch only necessary fields
+            select: { phoneNumber: true, firstName: true, closingBalance: true },
         });
 
         if (!customer) {
             return res.status(404).json({ message: 'Customer not found.' });
         }
 
-        // Generate a unique TransactionId
         const transactionId = generateTransactionId();
         const newClosingBalance = customer.closingBalance - totalAmount;
 
@@ -70,7 +72,6 @@ const manualCashPayment = async (req, res) => {
             },
         });
 
-        // Step 1: Find unpaid invoices and apply payment
         const invoices = await prisma.invoice.findMany({
             where: { customerId, status: 'UNPAID' },
             orderBy: { createdAt: 'asc' },
@@ -96,24 +97,15 @@ const manualCashPayment = async (req, res) => {
             remainingAmount -= paymentForInvoice;
         }
 
-        // Update customer closing balance
         await prisma.customer.update({
             where: { id: customerId },
             data: { closingBalance: newClosingBalance },
         });
 
-        // SMS Notification message
-   
-
-
         const text = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. Your balance is ${newClosingBalance}. Help us serve you better by Always using Paybill No: 4107197, your phone number as the account number to pay your garbage collection bill. Customer support: 0726594923.`;
         
-        //const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber);
-
-        // Send SMS
-        await sendSMS(customer,text);
-        //console.log(`SMS sent to ${sanitisedNumber}: ${message}`);
-
+        await sendSMS(text, customer);  // Call sendSMS function
+        
         res.status(201).json({
             message: 'Payment and receipt created successfully, SMS notification sent.',
             receipt,
@@ -126,6 +118,8 @@ const manualCashPayment = async (req, res) => {
         res.status(500).json({ error: 'Failed to create manual cash payment.', details: error.message });
     }
 };
+
+
 
 // Helper function to format phone number
 function sanitizePhoneNumber(phone) {
