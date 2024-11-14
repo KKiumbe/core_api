@@ -103,9 +103,11 @@ const manualCashPayment = async (req, res) => {
         });
 
         // SMS Notification message
-        const formattedBalanceMessage = newClosingBalance < 0
-            ? `Your closing balance is an overpayment of KES ${Math.abs(newClosingBalance)}`
-            : `Your closing balance is KES ${newClosingBalance}`;
+    // Correctly format the balance message
+         const formattedBalanceMessage = newClosingBalance < 0
+          ? `Your closing balance is an overpayment of KES ${Math.abs(newClosingBalance)}`
+          : `Your closing balance is KES ${newClosingBalance}`;
+
 
         const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ${formattedBalanceMessage}. Help us serve you better by Always using Paybill No: 4107197, your phone number as the account number to pay your garbage collection bill. Customer support: 0726594923.`;
         
