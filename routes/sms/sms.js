@@ -52,16 +52,19 @@ const sendSMS = async (message, customer) => {
         const payload = {
             partnerID: PARTNER_ID,
             apikey: SMS_API_KEY,
-            mobile: mobile,
+          
+           
             message,
             shortcode: SHORTCODE,
+            mobile: mobile,
+           
         };
 
         console.log(`This is payload: ${JSON.stringify(payload)}`);
 
         // Send the SMS
         const response = await axios.post(SMS_ENDPOINT, payload);
-        console.log(`SMS sent to ${sanitisedNumber}: ${message}`);
+     
 
         // Update SMS record status to 'sent' after successful send
         await prisma.sms.update({
