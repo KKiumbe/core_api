@@ -112,7 +112,7 @@ const manualCashPayment = async (req, res) => {
         //const sanitisedNumber = sanitizePhoneNumber(customer.phoneNumber);
 
         // Send SMS
-        await sendSMS(customer, message);
+        await sendSMS(customer,message);
         //console.log(`SMS sent to ${sanitisedNumber}: ${message}`);
 
         res.status(201).json({

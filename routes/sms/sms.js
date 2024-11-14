@@ -26,7 +26,7 @@ const checkSmsBalance = async () => {
 
 // Function to send SMS with balance check
 const sendSMS = async (message, customer) => {
-  
+    let clientsmsid;  // Declare clientsmsid outside of try-catch block to avoid 'undefined' errors
 
     try {
         // Check if there is at least 1 SMS balance before sending
@@ -36,8 +36,11 @@ const sendSMS = async (message, customer) => {
         }
 
         // Generate a unique `clientsmsid` for tracking
-        const clientsmsid = Math.floor(Math.random() * 1000000);
+        clientsmsid = Math.floor(Math.random() * 1000000);
         const mobile = customer.phoneNumber;
+
+        // Construct the message string dynamically
+        const smsMessage = `Dear ${customer.firstName}, payment of KES ${message.paymentAmount} received successfully. Your Current balance is KES ${customer.closingBalance}. Help us serve you better by using Paybill No: 4107197, your phone number as the account number. Customer support number: 0726594923`;
 
         // Create an SMS record with initial status 'pending'
         const smsRecord = await prisma.sms.create({
@@ -45,7 +48,7 @@ const sendSMS = async (message, customer) => {
                 clientsmsid,
                 customerId: customer.id,
                 mobile,
-                message,
+                message: smsMessage,  // Ensure this is a string, not an object
                 status: 'pending',
             },
         });
@@ -53,19 +56,15 @@ const sendSMS = async (message, customer) => {
         const payload = {
             partnerID: PARTNER_ID,
             apikey: SMS_API_KEY,
-          
-           
-            message,
+            message: smsMessage,  // Ensure this is the correct message
             shortcode: SHORTCODE,
             mobile: mobile,
-           
         };
 
         console.log(`This is payload: ${JSON.stringify(payload)}`);
 
         // Send the SMS
         const response = await axios.post(SMS_ENDPOINT, payload);
-     
 
         // Update SMS record status to 'sent' after successful send
         await prisma.sms.update({
@@ -77,11 +76,13 @@ const sendSMS = async (message, customer) => {
     } catch (error) {
         console.error('Error sending SMS:', error);
 
-        // Update SMS record status to 'failed' if there's an error
-        await prisma.sms.update({
-            where: { clientsmsid },
-            data: { status: 'failed' },
-        });
+        // Ensure `clientsmsid` is defined before using it in error handling
+        if (clientsmsid) {
+            await prisma.sms.update({
+                where: { clientsmsid },
+                data: { status: 'failed' },
+            });
+        }
 
         throw new Error(error.response ? error.response.data : 'Failed to send SMS.');
     }
