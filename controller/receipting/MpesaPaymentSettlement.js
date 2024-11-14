@@ -191,25 +191,24 @@ const checkSmsBalance = async () => {
 };
 
 // Function to send SMS with balance check
-const sendSMS = async (message, customer,mobile) => {
-  
 
+const sendSMS = async (message, customer, mobile) => {
     try {
+        // Define `clientsmsid` within this function to avoid scope issues
+        const clientsmsid = Math.floor(Math.random() * 1000000);
+
         // Check if there is at least 1 SMS balance before sending
         const balance = await checkSmsBalance();
         if (balance < 1) {
             throw new Error('Insufficient SMS balance');
         }
 
-        // Generate a unique `clientsmsid` for tracking
-        const clientsmsid = Math.floor(Math.random() * 1000000);
-
         // Create an SMS record with initial status 'pending'
         const smsRecord = await prisma.sms.create({
             data: {
                 clientsmsid,
                 customerId: customer.id,
-                mobile: mobile,
+                mobile,       // Ensure `mobile` is correctly assigned here
                 message,
                 status: 'pending',
             },
@@ -218,16 +217,13 @@ const sendSMS = async (message, customer,mobile) => {
         const payload = {
             partnerID: PARTNER_ID,
             apikey: SMS_API_KEY,
-            mobile: mobile,
+            mobile,
             message,
             shortcode: SHORTCODE,
         };
 
-        console.log(`This is payload: ${JSON.stringify(payload)}`);
-
         // Send the SMS
         const response = await axios.post(SMS_ENDPOINT, payload);
-        console.log(`SMS sent to ${sanitisedNumber}: ${message}`);
 
         // Update SMS record status to 'sent' after successful send
         await prisma.sms.update({
@@ -235,7 +231,7 @@ const sendSMS = async (message, customer,mobile) => {
             data: { status: 'sent' },
         });
 
-        return response.data; // Return the response for further processing if needed
+        return response.data;
     } catch (error) {
         console.error('Error sending SMS:', error);
 
@@ -248,5 +244,6 @@ const sendSMS = async (message, customer,mobile) => {
         throw new Error(error.response ? error.response.data : 'Failed to send SMS.');
     }
 };
+
 
 module.exports = { MpesaPaymentSettlement };
