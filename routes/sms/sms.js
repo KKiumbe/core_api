@@ -40,7 +40,6 @@ const sendSMS = async (message, customer) => {
         const customerId = customer.id;
 
         // Convert the `message` to a string (ensure it's properly stringified if it's an object)
-        const smsMessage = typeof message === 'object' ? JSON.stringify(message) : String(message);  // Ensure message is a string
 
         // Create an SMS record with initial status 'pending'
         const smsRecord = await prisma.sms.create({
@@ -48,7 +47,7 @@ const sendSMS = async (message, customer) => {
                 clientsmsid,
                 customerId,
                 mobile,
-                message: smsMessage,  // Ensure this is a string, not an object
+                message,  // Ensure this is a string, not an object
                 status: 'pending',
             },
         });
@@ -56,7 +55,7 @@ const sendSMS = async (message, customer) => {
         const payload = {
             partnerID: PARTNER_ID,
             apikey: SMS_API_KEY,
-            message: smsMessage,  // Ensure this is the correct message
+            message,  // Ensure this is the correct message
             shortcode: SHORTCODE,
             mobile: mobile,
         };
