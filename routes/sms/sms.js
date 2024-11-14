@@ -25,7 +25,7 @@ const checkSmsBalance = async () => {
 
 // Function to send SMS with balance check
 const sendSMS = async (message, customer) => {
-    console.log(`Sanitised number is ${sanitisedNumber}`);
+  
 
     try {
         // Check if there is at least 1 SMS balance before sending
