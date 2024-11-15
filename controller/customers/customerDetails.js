@@ -13,11 +13,7 @@ const getCustomerDetails = async (req, res) => {
           orderBy: { createdAt: 'desc' },
           include: {
             items: true,  // Include invoice items
-            receiptInvoices: {
-              include: {
-                receipt: true
-              }
-            }
+        
           }
         },
         receipts: {
