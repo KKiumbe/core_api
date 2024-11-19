@@ -7,7 +7,7 @@ const getAllCustomers = async (req, res) => {
     try {
         const customers = await prisma.customer.findMany();
         res.status(200).json(customers);
-        console.log(customers)
+        //console.log(customers)
     } catch (error) {
         console.error('Error fetching customers:', error);
         res.status(500).json({ message: 'Internal server error' });
