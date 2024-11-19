@@ -78,7 +78,6 @@ const manualCashPayment = async (req, res) => {
 
             receipts.push({
                 invoiceId: null,
-                description: `Applied entire payment of KES ${totalAmount} to closing balance`,
             });
 
             const balanceMessage = newClosingBalance < 0
@@ -118,24 +117,20 @@ const manualCashPayment = async (req, res) => {
         }
 
         // Apply remaining payment to closing balance or record overpayment
-        let newClosingBalance = customer.closingBalance;
+        const newClosingBalance = customer.closingBalance - totalAmount;
 
-        if (remainingAmount > 0) {
-            newClosingBalance -= remainingAmount;
+        // Update customer's closing balance
+        await prisma.customer.update({
+            where: { id: customerId },
+            data: { closingBalance: newClosingBalance },
+        });
 
-            // Update customer's closing balance
-            await prisma.customer.update({
-                where: { id: customerId },
-                data: { closingBalance: newClosingBalance },
-            });
+        receipts.push({
+            invoiceId: null, // Adjustment to closing balance or overpayment
+            description: `Applied KES ${remainingAmount} to ${newClosingBalance < 0 ? 'overpayment' : 'closing balance'}`,
+        });
 
-            receipts.push({
-                invoiceId: null, // Adjustment to closing balance or overpayment
-                description: `Applied KES ${remainingAmount} to ${newClosingBalance < 0 ? 'overpayment' : 'closing balance'}`,
-            });
-
-            remainingAmount = 0;
-        }
+        remainingAmount = 0;
 
         // Create receipt
         const receiptNumber = generateReceiptNumber();

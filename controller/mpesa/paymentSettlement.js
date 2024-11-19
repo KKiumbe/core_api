@@ -162,7 +162,7 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
             select: { closingBalance: true },
         });
 
-        const newClosingBalance = customer.closingBalance - remainingAmount;
+        const newClosingBalance = customer.closingBalance - paymentAmount;
 
         // Update the customer's closing balance
         await prisma.customer.update({
@@ -173,7 +173,6 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
         // Generate a receipt for closing balance adjustment
         receipts.push({
             invoiceId: null, // Indicates adjustment to closing balance
-            description: `Applied KES ${remainingAmount} to closing balance`,
         });
 
         remainingAmount = 0;
@@ -208,12 +207,11 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
         select: { closingBalance: true },
     });
 
-    let newClosingBalance = customer.closingBalance;
+    // Always adjust the closing balance based on the initial amount paid
+    const newClosingBalance = customer.closingBalance - paymentAmount;
 
-    // Case 3: Apply remaining payment to closing balance
+    // Case 3: Apply remaining payment to closing balance (if applicable)
     if (remainingAmount > 0) {
-        newClosingBalance -= remainingAmount;
-
         // Update the customer's closing balance
         await prisma.customer.update({
             where: { id: customerId },
@@ -222,8 +220,7 @@ async function processInvoices(paymentAmount, customerId, paymentId) {
 
         // Generate a receipt for closing balance adjustment
         receipts.push({
-            invoiceId: null // Indicates adjustment to closing balance
-            
+            invoiceId: null, // Indicates adjustment to closing balance
         });
 
         remainingAmount = 0;
