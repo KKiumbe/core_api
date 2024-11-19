@@ -18,6 +18,7 @@ const uploadcustomers = require('./routes/fileUpload/uploadRoute.js');
 const customerdetailsRoute = require('./routes/customer/customerDetailsRoute.js')
 const smsBalanceRoute = require('./routes/sms/balance.js')
 const reportsReoute  = require('./routes/reportRoutes/reportRoute.js')
+const userManagementRoute = require('./routes/rolesRoute/roles.js')
 const cookieParser = require('cookie-parser');
 
 const app = express();
@@ -55,6 +56,7 @@ app.use('/api', uploadcustomers); // Adjust your API path as needed
 app.use('/api', customerdetailsRoute); 
 app.use('/api', smsBalanceRoute); 
 app.use('/api', reportsReoute); 
+app.use('/api', userManagementRoute); 
 
 // Start the HTTP server
 const server = app.listen(PORT, '0.0.0.0', () => {
