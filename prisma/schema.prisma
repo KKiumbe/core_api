@@ -12,16 +12,23 @@ generator client {
 
 // User model
 model User {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  firstName   String
-  lastName    String
-  phoneNumber String   @unique
-  email       String?  @unique
-  county      String?
-  town        String?
-  gender      String
-  password    String   // To store hashed passwords
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  firstName           String
+  lastName            String
+  phoneNumber         String   @unique
+  email               String?  @unique
+  county              String?
+  town                String?
+  gender              String
+  password            String
+  roles               String[]
+  permissions         Json?
+  resetCode           String?    // Hashed OTP
+  resetCodeExpiresAt  DateTime?  // OTP expiry timestamp
+  otpAttempts         Int        @default(0) // Tracks OTP verification attempts
 }
+
+
 
 // Customer model
 model Customer {

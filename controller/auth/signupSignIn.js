@@ -4,10 +4,13 @@ const  jwt = require ('jsonwebtoken');
 const dotenv = require ('dotenv');
 
 const { PrismaClient } = require('@prisma/client');
+const ROLE_PERMISSIONS = require('../../DatabaseConfig/role.js')
 const prisma = new PrismaClient();
 dotenv.config();
 
- const register = async (req, res) => {
+
+
+const register = async (req, res) => {
   const {
     firstName,
     lastName,
@@ -21,7 +24,7 @@ dotenv.config();
 
   try {
     // Check if phoneNumber already exists (unique phone number for login)
-    const existingUser = await prisma.User.findUnique({
+    const existingUser = await prisma.user.findUnique({
       where: {
         phoneNumber: phoneNumber,
       },
@@ -39,7 +42,15 @@ dotenv.config();
     // Hash the password with 10 salt rounds
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create the new user
+    // Define defaultRole (ensure it's a string in an array)
+    const defaultRole = 'defaultRole';
+
+    // You may want to check if the role exists in ROLE_PERMISSIONS before assigning it
+    if (!ROLE_PERMISSIONS[defaultRole]) {
+      return res.status(500).json({ message: 'Default role is not defined in ROLE_PERMISSIONS' });
+    }
+
+    // Create the new user with roles as an array
     const newUser = await prisma.user.create({
       data: {
         firstName,
@@ -50,6 +61,7 @@ dotenv.config();
         town,
         gender,
         password: hashedPassword,
+        roles: [defaultRole], // Corrected to use an array here
       },
     });
 
@@ -86,10 +98,11 @@ const signin = async (req, res) => {
   
       // Generate a JWT token
       const token = jwt.sign(
-        { id: user.id, phoneNumber: user.phoneNumber }, // You can add more user data if needed
+        { id: user.id, phoneNumber: user.phoneNumber, roles: user.roles }, 
         process.env.JWT_SECRET,
-        { expiresIn: '1d' } // Token expires in 1 day
+        { expiresIn: '1d' }
       );
+      
   
       // Set the token in an HTTP-only cookie for security
       res.cookie('token', token, {

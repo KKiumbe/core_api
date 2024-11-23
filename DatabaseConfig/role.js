@@ -19,6 +19,16 @@ const ROLE_PERMISSIONS = {
     collector: {
       customers: ["read", "update_collected"], // Custom action for updating 'collected'
     },
+    defaultRole:{
+
+      customers: ["read",],
+      users: ["read"],
+      invoices: ["read"],
+      receipts: ["read"],
+      payments: ["read"],
+      sms: ["read"],
+      mpesaTransactions: ["read"],
+    }
   };
    
   module.exports = ROLE_PERMISSIONS;
