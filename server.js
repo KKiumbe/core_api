@@ -20,11 +20,13 @@ const smsBalanceRoute = require('./routes/sms/balance.js')
 const reportsReoute  = require('./routes/reportRoutes/reportRoute.js')
 const userManagementRoute = require('./routes/rolesRoute/roles.js')
 const cookieParser = require('cookie-parser');
+const { verifyToken } = require('./middleware/verifyToken.js');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cookieParser());
+app.use(verifyToken);
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.json());
@@ -35,11 +37,6 @@ app.use(cors({
     credentials: true,
 }));
 
-// MongoDB Connection
-mongoose
-    .connect(process.env.DATABASE_URL)
-    .then(() => console.log('Connected to MongoDB'))
-    .catch((error) => console.error('MongoDB connection error:', error));
 
 // Use customer routes
 app.use('/api', customerRoutes);

@@ -1,15 +1,13 @@
-const   bcrypt = require ('bcrypt');
-
-const  jwt = require ('jsonwebtoken');
-const dotenv = require ('dotenv');
-
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const dotenv = require('dotenv');
 const { PrismaClient } = require('@prisma/client');
-const ROLE_PERMISSIONS = require('../../DatabaseConfig/role.js')
-const prisma = new PrismaClient();
+const ROLE_PERMISSIONS = require('../../DatabaseConfig/role.js');
+
 dotenv.config();
+const prisma = new PrismaClient();
 
-
-
+// Register a new user
 const register = async (req, res) => {
   const {
     firstName,
@@ -19,15 +17,13 @@ const register = async (req, res) => {
     county,
     town,
     gender,
-    password
+    password,
   } = req.body;
 
   try {
-    // Check if phoneNumber already exists (unique phone number for login)
+    // Check if phoneNumber already exists
     const existingUser = await prisma.user.findUnique({
-      where: {
-        phoneNumber: phoneNumber,
-      },
+      where: { phoneNumber },
     });
 
     if (existingUser) {
@@ -39,18 +35,23 @@ const register = async (req, res) => {
       return res.status(400).json({ message: 'Password is required' });
     }
 
-    // Hash the password with 10 salt rounds
+    // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
+    const userCount = await prisma.user.count();
+    // Define default roles
+    const defaultRoles = userCount === 0 ? ['admin'] : ['default'];
 
-    // Define defaultRole (ensure it's a string in an array)
-    const defaultRole = 'defaultRole';
+    // Validate roles against ROLE_PERMISSIONS
+    const validRoles = Object.keys(ROLE_PERMISSIONS);
+    const invalidRoles = defaultRoles.filter((role) => !validRoles.includes(role));
 
-    // You may want to check if the role exists in ROLE_PERMISSIONS before assigning it
-    if (!ROLE_PERMISSIONS[defaultRole]) {
-      return res.status(500).json({ message: 'Default role is not defined in ROLE_PERMISSIONS' });
+    if (invalidRoles.length > 0) {
+      return res.status(500).json({
+        message: `Default roles are not defined in ROLE_PERMISSIONS: ${invalidRoles.join(', ')}`,
+      });
     }
 
-    // Create the new user with roles as an array
+    // Create the user in the database
     const newUser = await prisma.user.create({
       data: {
         firstName,
@@ -61,7 +62,7 @@ const register = async (req, res) => {
         town,
         gender,
         password: hashedPassword,
-        roles: [defaultRole], // Corrected to use an array here
+        roles: { set: defaultRoles }, // PostgreSQL array field
       },
     });
 
@@ -72,55 +73,48 @@ const register = async (req, res) => {
   }
 };
 
-
-
-
+// Sign in an existing user
 const signin = async (req, res) => {
-    const { phoneNumber, password } = req.body;
-  
-    try {
-      // Find the user by phone number
-      const user = await prisma.User.findUnique({
-        where: { phoneNumber },
-      });
-  
-      // Check if user exists
-      if (!user) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
-  
-      // Compare the provided password with the hashed password in the database
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-  
-      if (!isPasswordValid) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
-  
-      // Generate a JWT token
-      const token = jwt.sign(
-        { id: user.id, phoneNumber: user.phoneNumber, roles: user.roles }, 
-        process.env.JWT_SECRET,
-        { expiresIn: '1d' }
-      );
-      
-  
-      // Set the token in an HTTP-only cookie for security
-      res.cookie('token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-        maxAge: 24 * 60 * 60 * 1000, // Cookie expires in 1 day
-      });
-  
-      // Exclude the password from the response
-      const { password: userPassword, ...userInfo } = user;
-  
-      res.status(200).json({ message: 'Login successful', user: userInfo });
-    } catch (error) {
-      console.error('Error logging in:', error);
-      res.status(500).json({ message: 'Internal server error' });
-    }
-  };
-  
-  module.exports = { register, signin }; // Ensure to export the signin function
-  
+  const { phoneNumber, password } = req.body;
 
+  try {
+    // Find the user by phone number
+    const user = await prisma.user.findUnique({
+      where: { phoneNumber },
+    });
+
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Compare the password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Generate a JWT token
+    const token = jwt.sign(
+      { id: user.id, phoneNumber: user.phoneNumber, roles: user.roles },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    // Set the token in an HTTP-only cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+    });
+
+    // Exclude the password from the response
+    const { password: _, ...userInfo } = user;
+
+    res.status(200).json({ message: 'Login successful', user: userInfo });
+  } catch (error) {
+    console.error('Error logging in:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+module.exports = { register, signin };

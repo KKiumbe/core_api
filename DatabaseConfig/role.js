@@ -1,33 +1,27 @@
 const ROLE_PERMISSIONS = {
     admin: {
-      customers: ["create", "read", "update", "delete"],
-      users: ["create", "read", "update", "delete"],
-      invoices: ["create", "read", "update", "delete"],
-      receipts: ["create", "read", "update", "delete"],
-      payments: ["create", "read", "update", "delete"],
+      customer: ["create", "read", "update", "delete"],
+      user: ["create", "read", "update", "delete"],
+      invoice: ["create", "read", "update", "delete"],
+      receipt: ["create", "read", "update", "delete"],
+      payment: ["create", "read", "update", "delete"],
       sms: ["create", "read", "update", "delete"],
-      mpesaTransactions: ["create", "read", "update", "delete"],
+      mpesaTransaction: ["create", "read", "update", "delete"],
     },
     customer_manager: {
-      customers: ["create", "read", "update"],
-      invoices: ["read"],
+      customer: ["create", "read", "update"],
+      invoice: ["read"],
     },
     accountant: {
-      receipts: ["create", "read"],
-      payments: ["create", "read"],
+      receipt: ["create", "read"],
+      payment: ["create", "read"],
     },
     collector: {
-      customers: ["read", "update_collected"], // Custom action for updating 'collected'
+      customer: ["read", "update_collected"], // Custom action for updating 'collected'
     },
-    defaultRole:{
+    default:{
 
-      customers: ["read",],
-      users: ["read"],
-      invoices: ["read"],
-      receipts: ["read"],
-      payments: ["read"],
-      sms: ["read"],
-      mpesaTransactions: ["read"],
+    
     }
   };
    

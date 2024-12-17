@@ -1,6 +1,6 @@
 // Define the database connection
 datasource db {
-  provider = "mongodb"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -12,7 +12,7 @@ generator client {
 
 // User model
 model User {
-  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  id                  String   @id @default(uuid())
   firstName           String
   lastName            String
   phoneNumber         String   @unique
@@ -25,17 +25,17 @@ model User {
   permissions         Json?
   resetCode           String?    // Hashed OTP
   resetCodeExpiresAt  DateTime?  // OTP expiry timestamp
-  otpAttempts         Int        @default(0) // Tracks OTP verification attempts
+  otpAttempts         Int        @default(0) 
+  createdAt DateTime @default(now())
+  // Tracks OTP verification attempts
 }
-
-
 
 // Customer model
 model Customer {
-  id                    String                @id @default(auto()) @map("_id") @db.ObjectId
+  id                    String                @id @default(uuid())
   firstName             String
   lastName              String
-  email                 String?               
+  email                 String?
   phoneNumber           String                @unique
   secondaryPhoneNumber  String?
   gender                String?
@@ -73,8 +73,8 @@ enum CustomerStatus {
 
 // Invoice model
 model Invoice {
-  id                  String       @id @default(auto()) @map("_id") @db.ObjectId
-  customerId          String       @db.ObjectId
+  id                  String       @id @default(uuid())
+  customerId          String
   invoicePeriod       DateTime
   invoiceNumber       String       @unique // Ensure uniqueness
   invoiceAmount       Float        
@@ -101,8 +101,8 @@ enum InvoiceStatus {
 
 // InvoiceItem model
 model InvoiceItem {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  invoiceId   String   @db.ObjectId 
+  id          String   @id @default(uuid())
+  invoiceId   String
   description String   
   amount      Float    
   quantity    Int      
@@ -118,76 +118,69 @@ enum ModeOfPayment {
 }
 
 // Receipt model
-// Receipt model
 model Receipt {
-  id             String      @id @default(auto()) @map("_id") @db.ObjectId
+  id             String      @id @default(uuid())
   receiptNumber  String      @unique // Ensure uniqueness of the receipt number
   amount         Float
   modeOfPayment  ModeOfPayment
   paidBy         String?
   transactionCode String?
   phoneNumber    String?
-  paymentId      String? @db.ObjectId @unique // Link to Payment and make it unique
+  paymentId      String? @unique // Link to Payment and make it unique
+
+  // Relations
   payment        Payment?   @relation(fields: [paymentId], references: [id])
-
-  // Many-to-many relation to Invoice through ReceiptInvoice
   receiptInvoices ReceiptInvoice[] @relation("InvoiceReceipts")
-
   customer       Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  customerId     String      @db.ObjectId
+  customerId     String
   createdAt      DateTime    @default(now())
 }
 
-
 // Payment model
 model Payment {
-  id                      String      @id @default(auto()) @map("_id") @db.ObjectId
-  amount                  Float
-  modeOfPayment           ModeOfPayment
-  firstName                String ?
-  receipted               Boolean     @default(false)
-  TransactionId      String?   @unique 
-   Ref            String?  
+  id             String      @id @default(uuid())
+  amount         Float
+  modeOfPayment  ModeOfPayment
+  firstName      String?
+  receipted      Boolean     @default(false)
+  transactionId  String?     @unique 
+  ref            String?  
 
   // One-to-one relationship with Receipt
-  receipt                 Receipt?    
-  receiptId               String?     @db.ObjectId
-
-  // Capture when the payment was created
-  createdAt               DateTime    @default(now()) // Automatically set when created
+  receipt        Receipt?    
+  createdAt      DateTime    @default(now()) // Automatically set when created
 }
 
-// MpesaTransaction model for tracking MPESA transactions separately
+// MpesaTransaction model
 model MpesaTransaction {
-  id              String      @id @default(auto()) @map("_id") @db.ObjectId
-  TransID         String       @unique     
-  TransTime       DateTime    
-  TransAmount     Float       
-  BillRefNumber   String  
-  MSISDN          String      
-  FirstName       String      
+  id              String      @id @default(uuid())
+  transID         String      @unique     
+  transTime       DateTime    
+  transAmount     Float       
+  billRefNumber   String  
+  msisdn          String      
+  firstName       String      
   processed       Boolean     @default(false) 
-
   createdAt       DateTime    @default(now()) 
 }
 
-// ReceiptInvoice model (explicit many-to-many relation between Receipt and Invoice)
+// ReceiptInvoice model
 model ReceiptInvoice {
-  id          String      @id @default(auto()) @map("_id") @db.ObjectId
-  receiptId   String      @db.ObjectId
-  invoiceId   String      @db.ObjectId
+  id          String      @id @default(uuid())
+  receiptId   String
+  invoiceId   String
 
   // Relations
   receipt     Receipt?     @relation("InvoiceReceipts", fields: [receiptId], references: [id], onDelete: Cascade)
   invoice     Invoice?     @relation("InvoiceReceipts", fields: [invoiceId], references: [id], onDelete: Cascade)
 }
 
-
-model sms {
-  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+// SMS model
+model SMS {
+  id           String    @id @default(uuid())
   clientsmsid  Int       @unique // Use the unique identifier to track SMS
-  customerId   String?   @db.ObjectId // Optional: Relate to Customer
-  mobile       String?    // Recipient's mobile number
+  customerId   String?   // Optional: Relate to Customer
+  mobile       String    // Recipient's mobile number
   message      String    // SMS message content
   status       String    // Store delivery status here
   response     Json?     // Store API response if needed

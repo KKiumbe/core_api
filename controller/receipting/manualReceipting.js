@@ -41,7 +41,7 @@ const manualCashPayment = async (req, res) => {
                 data: {
                     amount: totalAmount,
                     modeOfPayment,
-                    TransactionId: transactionId,
+                    transactionId: transactionId,
                     receipted: true,
                     createdAt: new Date(),
                 },
@@ -51,7 +51,7 @@ const manualCashPayment = async (req, res) => {
                 data: {
                     amount: totalAmount,
                     modeOfPayment,
-                    TransactionId: transactionId,
+                    transactionId: transactionId,
                     receipted: true,
                     createdAt: new Date(),
                 },
@@ -87,7 +87,7 @@ const manualCashPayment = async (req, res) => {
             const text = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ` +
                 `Your balance is ${balanceMessage}. Help us serve you better by using Paybill No: 4107197, your phone number as the account number. Customer support: 0726594923.`;
 
-            await sendSMS(text, customer);
+            //await sendSMS(text, customer);
 
             return res.status(201).json({
                 message: 'Payment applied to closing balance successfully. SMS notification sent.',
@@ -153,7 +153,7 @@ const manualCashPayment = async (req, res) => {
         const text = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ` +
             `Your balance is ${balanceMessage}. Help us serve you better by using Paybill No: 4107197, your phone number as the account number. Customer support: 0726594923.`;
 
-        await sendSMS(text, customer);
+       // await sendSMS(text, customer);
 
         // Respond with success
         res.status(201).json({
