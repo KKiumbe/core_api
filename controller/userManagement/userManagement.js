@@ -30,9 +30,40 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+
+const getUserById = async (req, res) => {
+  const { userId:id } = req.params;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        phoneNumber:true,
+        email: true,
+        roles: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: `User with ID ${id} not found.` });
+    }
+
+    res.status(200).json(user);
+  } catch (error) {
+    console.error(`Error fetching user with ID ${id}:`, error);
+    res.status(500).json({ error: 'Failed to fetch user', details: error.message });
+  }
+};
+
+
 /**
  * Assign roles to a user
  */
+
 
 const assignRole = async (req, res) => {
   const { id: userId, roles } = req.body; // `roles` is an array of roles to assign
@@ -48,8 +79,15 @@ const assignRole = async (req, res) => {
     return res.status(400).json({ error: 'Invalid input. Ensure userId and roles are provided correctly.' });
   }
 
+  // Ensure the admin role cannot be assigned by non-superadmin
+  if (roles.includes('admin')) {
+    return res.status(403).json({
+      error: 'Access denied. The admin role cannot be assigned.',
+    });
+  }
+
   // Validate roles
-  const validRoles = Object.keys(ROLE_PERMISSIONS); // ROLE_PERMISSIONS contains valid role keys
+  const validRoles = Object.keys(ROLE_PERMISSIONS); // Valid roles from the mapping
   const invalidRoles = roles.filter((r) => !validRoles.includes(r));
 
   if (invalidRoles.length > 0) {
@@ -69,24 +107,60 @@ const assignRole = async (req, res) => {
       return res.status(404).json({ error: 'User not found.' });
     }
 
-    // Update the user's roles
+    // Calculate permissions based on roles
+    let permissions = [];
+
+    roles.forEach((role) => {
+      const rolePermissions = ROLE_PERMISSIONS[role];
+      if (rolePermissions) {
+        Object.keys(rolePermissions).forEach((resource) => {
+          rolePermissions[resource].forEach((action) => {
+            permissions.push(`${action}:${resource}`);
+          });
+        });
+      }
+    });
+
+    // Remove duplicate permissions
+    permissions = [...new Set(permissions)];
+
+    // Ensure permissions exist in the database, create missing ones
+    const createdPermissions = [];
+    for (const perm of permissions) {
+      let permission = await prisma.permission.findUnique({
+        where: { name: perm },
+      });
+
+      if (!permission) {
+        permission = await prisma.permission.create({
+          data: { name: perm },
+        });
+      }
+
+      createdPermissions.push(permission);
+    }
+
+    // Update the user's roles and permissions
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
         roles: {
           set: roles, // Replace existing roles with the provided array
         },
+        permissions: {
+          connect: createdPermissions.map((perm) => ({ id: perm.id })), // Connect existing permissions
+        },
       },
     });
 
     return res.status(200).json({
-      message: 'Roles assigned successfully.',
+      message: 'Roles and permissions assigned successfully.',
       user: updatedUser,
     });
   } catch (error) {
-    console.error('Failed to assign roles:', error.message);
+    console.error('Failed to assign roles and permissions:', error.message);
     return res.status(500).json({
-      error: 'Failed to assign roles.',
+      error: 'Failed to assign roles and permissions.',
       details: error.message,
     });
   }
@@ -244,4 +318,5 @@ module.exports = {
   deleteUser,
   stripRoles,
   updateUserDetails,
+  getUserById
 };

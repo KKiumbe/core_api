@@ -12,10 +12,10 @@ const checkAccess = require('../../middleware/roleVerify.js');
 const router = express.Router();
 
 // Route to create a new customer
-router.post('/customers',verifyToken,checkAccess('customer','create'), createCustomer);
-router.get('/customers', verifyToken , checkAccess('customer','read') , getAllCustomers);
-router.put('/customers/:id',verifyToken,checkAccess('customer','update'), editCustomer);
-router.get('/search-customers',verifyToken,checkAccess('customer','read'), SearchCustomers);
+router.post('/customers',verifyToken, createCustomer);
+router.get('/customers', verifyToken ,checkAccess('Customer','read'), getAllCustomers);
+router.put('/customers/:id',verifyToken,checkAccess('Customer','update'), editCustomer);
+router.get('/search-customers',verifyToken,checkAccess('Customer','read'), SearchCustomers);
 
 module.exports = router;
 

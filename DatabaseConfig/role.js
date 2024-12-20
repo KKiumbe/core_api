@@ -1,29 +1,31 @@
 const ROLE_PERMISSIONS = {
-    admin: {
-      customer: ["create", "read", "update", "delete"],
-      user: ["create", "read", "update", "delete"],
-      invoice: ["create", "read", "update", "delete"],
-      receipt: ["create", "read", "update", "delete"],
-      payment: ["create", "read", "update", "delete"],
-      sms: ["create", "read", "update", "delete"],
-      mpesaTransaction: ["create", "read", "update", "delete"],
-    },
-    customer_manager: {
-      customer: ["create", "read", "update"],
-      invoice: ["read"],
-    },
-    accountant: {
-      receipt: ["create", "read"],
-      payment: ["create", "read"],
-    },
-    collector: {
-      customer: ["read", "update_collected"], // Custom action for updating 'collected'
-    },
-    default:{
+  admin: {
+    Customer: ["create", "read", "update", "delete"],
+    User: ["create", "read", "update", "delete"],
+    Invoice: ["create", "read", "update", "delete"],
+    Receipt: ["create", "read", "update", "delete"],
+    Payment: ["create", "read", "update", "delete"],
+    Sms: ["create", "read", "update", "delete"],
+    MpesaTransaction: ["create", "read", "update", "delete"],
+    TrashBagTask: ["create", "read", "update", "delete"],
+  },
+  customer_manager: {
+    Customer: ["create", "read"],
+    Invoice: ["create", "read"],
+    Receipt: ["create", "read"],
+    Payment: ["create", "read"],
+    Sms: ["create", "read"],
+    MpesaTransaction: ["create", "read"],
+    TrashBagTask: ["create", "read"],
+  },
+  accountant: {
+    Receipt: ["create", "read"],
+    Payment: ["create", "read"],
+  },
+  collector: {
+    Customer: ["read", "update"],
+  },
+  default: {},
+};
 
-    
-    }
-  };
-   
-  module.exports = ROLE_PERMISSIONS;
-  
+module.exports = ROLE_PERMISSIONS;

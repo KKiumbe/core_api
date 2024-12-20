@@ -1,5 +1,5 @@
 const express = require('express');
-const mongoose = require('mongoose');
+
 const cors = require('cors');
 const helmet = require('helmet'); // Import Helmet
 require('dotenv').config();
@@ -20,13 +20,15 @@ const smsBalanceRoute = require('./routes/sms/balance.js')
 const reportsReoute  = require('./routes/reportRoutes/reportRoute.js')
 const userManagementRoute = require('./routes/rolesRoute/roles.js')
 const cookieParser = require('cookie-parser');
-const { verifyToken } = require('./middleware/verifyToken.js');
+
+const permissionsRoutes = require('./routes/permision/permissionRoute.js')
+const createTask = require('./routes/task/taskRoute.js')
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cookieParser());
-app.use(verifyToken);
+//app.use(verifyToken);
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.json());
@@ -54,10 +56,13 @@ app.use('/api', customerdetailsRoute);
 app.use('/api', smsBalanceRoute); 
 app.use('/api', reportsReoute); 
 app.use('/api', userManagementRoute); 
+app.use('/api', permissionsRoutes);
+app.use('/api', createTask);
+
 
 // Start the HTTP server
 const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on http://212.47.74.158:${PORT}`);
+  console.log(`Server is running on:${PORT}`);
 });
 
 // Set server timeout

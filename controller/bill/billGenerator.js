@@ -1,9 +1,11 @@
 const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
 //const { GarbageCollectionDay } = require('./enum.js'); // Adjust the path if needed
 
 const schedule = require('node-schedule'); // For scheduling jobs
 const invoiceQueue = require('./jobFunction.js');
-const prisma = new PrismaClient();
+
 
 // Function to generate a unique invoice number
 function generateInvoiceNumber(customerId) {
@@ -387,21 +389,36 @@ async function cancelSystemGeneratedInvoices() {
 }
 
 // Get all invoices, ordered by the latest first
+
+
+
 async function getAllInvoices(req, res) {
   try {
-    const invoices = await prisma.invoice.findMany({
-      include: { customer: true, items: true },
+    // Fetch all invoices with customer and item details
+    const invoices = await prisma.Invoice.findMany({
+      include: {
+        customer: true,
+        items: true,
+      },
       orderBy: {
-        createdAt: 'desc',  // Order by createdAt in descending order
+        createdAt: 'desc',
       },
     });
 
-    res.json(invoices);
+    // Check if invoices are empty and return a message
+    if (invoices.length === 0) {
+      return res.status(200).json({ message: 'No invoices found.' });
+    }
+
+    // Return the fetched invoices
+    res.status(200).json(invoices);
   } catch (error) {
     console.error('Error fetching invoices:', error);
     res.status(500).json({ error: 'Error fetching invoices' });
   }
 }
+
+
 
 
 // Cancel an invoice by ID (for API)

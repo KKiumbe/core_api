@@ -11,27 +11,27 @@ const router = express.Router();
 
 
 
-router.get('/invoices/all',verifyToken, checkAccess('invoice','read'), getAllInvoices );
+router.get('/invoices/all', getAllInvoices );
 
-router.get('/invoices/search',verifyToken,checkAccess('invoice','read'), SearchInvoices)
-router.get('/invoices/:id/',verifyToken,checkAccess('invoice','read'), getInvoiceDetails)
-router.put('/invoices/cancel/:invoiceId/', verifyToken, checkAccess('invoice','update'), cancelInvoiceById);
+router.get('/invoices/search',verifyToken,checkAccess('Invoice','read'), SearchInvoices)
+router.get('/invoices/:id/',verifyToken,checkAccess('Invoice','read'), getInvoiceDetails)
+router.put('/invoices/cancel/:invoiceId/', verifyToken, checkAccess('Invoice','update'), cancelInvoiceById);
 
 // Route to create a manual invoice
-router.post('/invoices', verifyToken, checkAccess('invoice','create'),createInvoice);
+router.post('/invoices', verifyToken, checkAccess('Invoice','create'),createInvoice);
 
 router.post('/send-bulk-sms', addSmsJob);
 
 
 // Route to generate invoices for all active customers for a specified month
-router.post('/invoices/generate', verifyToken,checkAccess('invoice','create'), generateInvoices);
+router.post('/invoices/generate', verifyToken,checkAccess('Invoice','create'), generateInvoices);
 
-router.post('/invoices-generate-day',checkAccess('invoice','create'), generateInvoicesByDay)
+router.post('/invoices-generate-day',checkAccess('Invoice','create'), generateInvoicesByDay)
 
 
 
 // Route to cancel system-generated invoices for a specific customer and month
-router.patch('/invoices/cancel',checkAccess('invoice','update'), cancelSystemGenInvoices);
+router.patch('/invoices/cancel',checkAccess('Invoice','update'), cancelSystemGenInvoices);
 
 
 module.exports = router;

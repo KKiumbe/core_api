@@ -100,21 +100,20 @@ const signin = async (req, res) => {
       { expiresIn: '1d' }
     );
 
-    // Set the token in an HTTP-only cookie
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
-    });
-
     // Exclude the password from the response
     const { password: _, ...userInfo } = user;
 
-    res.status(200).json({ message: 'Login successful', user: userInfo });
+    // Return both the user info and token in the response
+    res.status(200).json({
+      message: 'Login successful',
+      user: userInfo,
+      token, // Include the token in the response body
+    });
   } catch (error) {
     console.error('Error logging in:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
 
 module.exports = { register, signin };

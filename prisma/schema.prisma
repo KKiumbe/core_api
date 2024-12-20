@@ -1,4 +1,4 @@
-// Define the database connection
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -22,53 +22,105 @@ model User {
   gender              String
   password            String
   roles               String[]
-  permissions         Json?
-  resetCode           String?    // Hashed OTP
-  resetCodeExpiresAt  DateTime?  // OTP expiry timestamp
+  permissions Permission[] @relation("UserPermissions")
+  resetCode           String?    
+  resetCodeExpiresAt  DateTime?  
   otpAttempts         Int        @default(0) 
-  createdAt DateTime @default(now())
-  // Tracks OTP verification attempts
+  createdAt           DateTime   @default(now())
+   tasksAssigned       TaskAssignee[]
+   bagsHeld          Int?
+  notifications Notification[] @relation("UserNotifications")  // New relation
+}
+
+  
+
+
+model Permission {
+  id   String  @id @default(uuid())
+  name String  @unique // Permission name (e.g., "read:Customer")
+  users User[] @relation("UserPermissions") // Relation back to User
 }
 
 // Customer model
 model Customer {
-  id                    String                @id @default(uuid())
+  id                    String                  @id @default(uuid())
   firstName             String
   lastName              String
   email                 String?
-  phoneNumber           String                @unique
+  phoneNumber           String                  @unique
   secondaryPhoneNumber  String?
   gender                String?
   county                String?
   town                  String?
   location              String?
-  estateName            String?               // Optional estate name
-  building              String?               // Optional building name
-  houseNumber           String?               // Optional house number
+  estateName            String?                 
+  building              String?                 
+  houseNumber           String?                 
   category              String?
   monthlyCharge         Float
-  status                CustomerStatus        @default(ACTIVE)
-  garbageCollectionDay  GarbageCollectionDay  // Enum for days of the week
+  status                CustomerStatus          @default(ACTIVE)
+  garbageCollectionDay  GarbageCollectionDay
+  collected             Boolean                 @default(false)  
+  closingBalance        Float                   @default(0) 
+
   invoices              Invoice[]
   receipts              Receipt[]
-  collected             Boolean               @default(false)  
-  closingBalance        Float                 @default(0) // Add closing balance field
+  garbageCollectionHistory GarbageCollectionHistory[] 
+  trashBagIssuanceHistory TrashBagIssuance[]
 }
 
-// Enum for days of the week
-enum GarbageCollectionDay {
-  MONDAY
-  TUESDAY
-  WEDNESDAY
-  THURSDAY
-  FRIDAY
-  SATURDAY
+
+model Task {
+  id        String   @id @default(uuid())
+  type      String   // Task type (e.g., "delivery", "collection")
+  status    String   // Task status (e.g., "PENDING", "COMPLETED")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  declaredBags Int?
+
+  // Reverse relation to TrashBagIssuance
+  trashBagIssuances TrashBagIssuance[] // Relation to trash bag issuances linked to this task
+  taskAssignees     TaskAssignee[]    // Relationship to employees assigned to the task
 }
 
-// Enum for customer status
-enum CustomerStatus {
-  ACTIVE
-  DORMANT
+
+model Notification {
+  id          String   @id @default(uuid())
+  message     String
+  status      String   @default("UNREAD")  // The status of the notification (e.g., UNREAD, READ)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String   // Foreign key to the User
+  user        User     @relation("UserNotifications", fields: [userId], references: [id])  // Define the correct relation
+}
+
+model TaskAssignee {
+  id           String @id @default(uuid())
+  taskId       String
+  assigneeId   String // Renamed from collectorId to assigneeId for general tasks
+  task         Task   @relation(fields: [taskId], references: [id])
+  assignee     User   @relation(fields: [assigneeId], references: [id])
+}
+
+model TrashBagIssuance {
+  id            String   @id @default(uuid())
+  taskId        String
+  customerId    String
+  issuedDate    DateTime @default(now())
+  bagsIssued    Boolean  // Boolean to track if bags were issued
+  customer      Customer @relation(fields: [customerId], references: [id])
+  task          Task     @relation(fields: [taskId], references: [id])
+}
+
+
+// GarbageCollectionHistory model
+model GarbageCollectionHistory {
+  id             String     @id @default(uuid())
+  customerId     String     
+  collectionDate DateTime   @default(now())
+  collected      Boolean    @default(false) 
+
+  customer       Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
 }
 
 // Invoice model
@@ -76,27 +128,17 @@ model Invoice {
   id                  String       @id @default(uuid())
   customerId          String
   invoicePeriod       DateTime
-  invoiceNumber       String       @unique // Ensure uniqueness
+  invoiceNumber       String       @unique 
   invoiceAmount       Float        
-  closingBalance      Float        // To track balance for this invoice
+  closingBalance      Float        
   status              InvoiceStatus @default(UNPAID) 
   isSystemGenerated   Boolean    
   createdAt           DateTime     @default(now())
-  amountPaid          Float        @default(0) // Track the amount paid
+  amountPaid          Float        @default(0) 
 
   customer            Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
   items               InvoiceItem[]
-  
-  // Many-to-many relation to Receipt through ReceiptInvoice
   receiptInvoices     ReceiptInvoice[] @relation("InvoiceReceipts")
-}
-
-// Enum for invoice status
-enum InvoiceStatus {
-  UNPAID
-  PAID
-  PPAID
-  CANCELLED
 }
 
 // InvoiceItem model
@@ -110,26 +152,18 @@ model InvoiceItem {
   invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 }
 
-// Enum for payment methods
-enum ModeOfPayment {
-  CASH
-  MPESA
-  BANK
-}
-
 // Receipt model
 model Receipt {
   id             String      @id @default(uuid())
-  receiptNumber  String      @unique // Ensure uniqueness of the receipt number
+  receiptNumber  String      @unique 
   amount         Float
   modeOfPayment  ModeOfPayment
   paidBy         String?
   transactionCode String?
   phoneNumber    String?
-  paymentId      String? @unique // Link to Payment and make it unique
+  paymentId      String? @unique 
 
-  // Relations
-  payment        Payment?   @relation(fields: [paymentId], references: [id])
+  payment        Payment ? @relation(fields: [paymentId], references: [id], onDelete: Cascade)   
   receiptInvoices ReceiptInvoice[] @relation("InvoiceReceipts")
   customer       Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
   customerId     String
@@ -146,22 +180,8 @@ model Payment {
   transactionId  String?     @unique 
   ref            String?  
 
-  // One-to-one relationship with Receipt
   receipt        Receipt?    
-  createdAt      DateTime    @default(now()) // Automatically set when created
-}
-
-// MpesaTransaction model
-model MpesaTransaction {
-  id              String      @id @default(uuid())
-  transID         String      @unique     
-  transTime       DateTime    
-  transAmount     Float       
-  billRefNumber   String  
-  msisdn          String      
-  firstName       String      
-  processed       Boolean     @default(false) 
-  createdAt       DateTime    @default(now()) 
+  createdAt      DateTime    @default(now()) 
 }
 
 // ReceiptInvoice model
@@ -170,19 +190,68 @@ model ReceiptInvoice {
   receiptId   String
   invoiceId   String
 
-  // Relations
   receipt     Receipt?     @relation("InvoiceReceipts", fields: [receiptId], references: [id], onDelete: Cascade)
   invoice     Invoice?     @relation("InvoiceReceipts", fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+// MpesaTransaction model
+model MpesaTransaction {
+  id              String      @id @default(uuid())
+  TransID         String      @unique     
+  TransTime       DateTime    
+  TransAmount     Float       
+  BillRefNumber   String  
+  MSISDN          String      
+  FirstName       String      
+  processed       Boolean     @default(false) 
+  createdAt       DateTime    @default(now()) 
 }
 
 // SMS model
 model SMS {
   id           String    @id @default(uuid())
-  clientsmsid  Int       @unique // Use the unique identifier to track SMS
-  customerId   String?   // Optional: Relate to Customer
-  mobile       String    // Recipient's mobile number
-  message      String    // SMS message content
-  status       String    // Store delivery status here
-  response     Json?     // Store API response if needed
+  clientsmsid  Int       @unique 
+  customerId   String?  
+  mobile       String    
+  message      String    
+  status       String    
+  response     Json?     
   createdAt    DateTime  @default(now())
 }
+
+// Enums
+enum CustomerStatus {
+  ACTIVE
+  DORMANT
+}
+
+enum GarbageCollectionDay {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PAID
+  PPAID
+  CANCELLED
+}
+
+enum ModeOfPayment {
+  CASH
+  MPESA
+  BANK
+}
+
+

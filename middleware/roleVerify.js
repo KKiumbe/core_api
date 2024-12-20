@@ -1,20 +1,49 @@
-const ROLE_PERMISSIONS = require("./../DatabaseConfig/role.js");
+const ROLE_PERMISSIONS = require("../DatabaseConfig/role.js");
 
 const checkAccess = (module, action) => (req, res, next) => {
-  const { roles } = req.user; // Assume user info is added to req after authentication
+  // Ensure req.user exists
+  const user = req.user;
+  console.log(`user ${user}`);
 
-  if (!roles) return res.status(403).json({ error: "Unauthorized" });
-
- 
-  console.log(`this is the roles object ${roles}`);
-
-  for (const role of roles) {
-    if (ROLE_PERMISSIONS[role]?.[module]?.includes(action)) {
-      return next();
-    }
+  if (!user) {
+    console.error("User object is missing from the request. Ensure authentication middleware is applied.");
+    return res.status(403).json({
+      error: "Unauthorized",
+      details: "User is not authenticated. Please log in.",
+    });
   }
 
-  return res.status(403).json({ error: "Forbidden" });
+  // Extract roles from user object
+  const { roles } = user;
+
+  console.log("Authenticated user:", user);
+
+  // Ensure roles is a non-empty array
+  if (!Array.isArray(roles) || roles.length === 0) {
+    console.warn("Invalid or missing roles for the user.");
+    return res.status(403).json({
+      error: "Forbidden",
+      details: "No valid roles provided. Please log in or check your permissions.",
+    });
+  }
+
+  console.log(`Checking access for module "${module}", action "${action}", roles: ${JSON.stringify(roles)}`);
+
+  // Check if the user has the required permission
+  const hasPermission = roles.some((role) =>
+    ROLE_PERMISSIONS[role]?.[module]?.includes(action)
+  );
+
+  if (hasPermission) {
+    console.log(`Access granted for roles "${roles.join(", ")}" on ${module}:${action}`);
+    return next();
+  }
+
+  console.error(`Access denied: User lacks permission for ${module}:${action}`);
+  return res.status(403).json({
+    error: "Forbidden",
+    details: `You lack the "${action}" permission for "${module}". Please contact an administrator.`,
+  });
 };
 
 module.exports = checkAccess;
