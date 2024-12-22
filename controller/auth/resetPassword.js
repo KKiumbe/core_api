@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const { PrismaClient } = require('@prisma/client');
-const { sendSMS } = require('./sendSMS'); // Import the sendSMS utility function
+const { sendSMS } = require('./requestOTPSMS.js');
 const prisma = new PrismaClient();
 
 const requestOTP = async (req, res) => {
@@ -87,24 +87,37 @@ const verifyOTP = async (req, res) => {
 const resetPassword = async (req, res) => {
   const { phoneNumber, newPassword } = req.body;
 
+  if (!phoneNumber || !newPassword) {
+    return res.status(400).json({ message: "Phone number and new password are required." });
+  }
+
   try {
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters long.' });
+    const user = await prisma.user.findUnique({
+      where: { phoneNumber },
+    });
+
+    if (!user || user.resetCode || user.otpAttempts > 0) {
+      return res.status(403).json({
+        message: "OTP verification required before resetting password.",
+      });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     await prisma.user.update({
       where: { phoneNumber },
-      data: { password: hashedPassword },
+      data: {
+        password: hashedPassword,
+      },
     });
 
-    res.status(200).json({ message: 'Password has been reset successfully.' });
+    res.status(200).json({ message: "Password reset successfully." });
   } catch (error) {
-    console.error('Error resetting password:', error);
-    res.status(500).json({ message: 'Internal server error.' });
+    console.error("Error resetting password:", error);
+    res.status(500).json({ message: "Error resetting password." });
   }
 };
+
 
 module.exports = {
   requestOTP,

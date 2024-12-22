@@ -124,6 +124,18 @@ async function generateInvoices() {
 
 
 
+schedule.scheduleJob('0 0 1 * *', async () => {
+  console.log('Running scheduled job to generate invoices...');
+  try {
+    await generateInvoices();
+  } catch (error) {
+    console.error('Error during scheduled job execution:', error);
+  }
+});
+
+
+
+
 
 
 // Controller function to handle invoice generation based on collection day
@@ -484,15 +496,6 @@ async function cancelInvoiceById(req, res) {
 }
 
 
-// Scheduled job to generate invoices on the 1st of every month
-schedule.scheduleJob('0 0 1 * *', async () => {
-  console.log('Running scheduled job to generate invoices...');
-  try {
-    await generateInvoices();
-  } catch (error) {
-    console.error('Error during scheduled job execution:', error);
-  }
-});
 
 // Get invoice details by ID
 async function getInvoiceDetails(req, res) {

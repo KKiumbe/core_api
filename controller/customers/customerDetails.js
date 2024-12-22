@@ -12,17 +12,31 @@ const getCustomerDetails = async (req, res) => {
         invoices: {
           orderBy: { createdAt: 'desc' },
           include: {
-            items: true,  // Include invoice items
-        
-          }
+            items: true, // Include invoice items
+          },
         },
         receipts: {
           orderBy: { createdAt: 'desc' },
           include: {
-            payment: true  // Include linked payment details
-          }
-        }
-      }
+            payment: true, // Include linked payment details
+          },
+        },
+        trashBagIssuanceHistory: {
+          orderBy: { issuedDate: 'desc' },
+          include: {
+            task: {
+              select: {
+                type: true,
+                status: true,
+                declaredBags: true,
+              },
+            },
+          },
+        },
+        garbageCollectionHistory: {
+          orderBy: { collectionDate: 'desc' },
+        },
+      },
     });
 
     if (!customer) {

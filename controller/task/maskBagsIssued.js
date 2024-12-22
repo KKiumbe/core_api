@@ -1,4 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
+const { sendSMS } = require("../../routes/sms/sms.js");
+
 const prisma = new PrismaClient();
 
 const markCustomerAsIssued = async (req, res) => {
@@ -19,26 +21,35 @@ const markCustomerAsIssued = async (req, res) => {
     }
 
     // Check if the customer is part of the task
-    const customer = await prisma.trashBagIssuance.findFirst({
+    const customerIssuance = await prisma.trashBagIssuance.findFirst({
       where: {
         taskId: taskId,
         customerId: customerId,
       },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+            phoneNumber: true,
+          },
+        },
+      },
     });
 
-    if (!customer) {
+    if (!customerIssuance) {
       return res.status(404).json({ error: "Customer not found for this task." });
     }
 
     // If the customer has already received the bags, return an error
-    if (customer.bagsIssued) {
+    if (customerIssuance.bagsIssued) {
       return res.status(400).json({ error: "Customer has already been marked as issued." });
     }
 
     // Update the customer to mark them as issued
     await prisma.trashBagIssuance.update({
       where: {
-        id: customer.id,
+        id: customerIssuance.id,
       },
       data: {
         bagsIssued: true, // Mark the customer as issued
@@ -46,8 +57,21 @@ const markCustomerAsIssued = async (req, res) => {
       },
     });
 
+    // Prepare SMS message
+    const customer = customerIssuance.customer;
+    const text = `Dear ${customer.firstName}, your trash bags have been successfully issued. Thank you for your cooperation!`;
+
+    // Send SMS notification
+    try {
+      await sendSMS(text, customer);
+      console.log(`SMS sent to customer ${customer.phoneNumber}`);
+    } catch (smsError) {
+      console.error(`Error sending SMS to customer ${customer.phoneNumber}:`, smsError.message);
+      // Optionally, you can log the SMS failure or handle it as required
+    }
+
     res.status(200).json({
-      message: "Customer marked as issued successfully.",
+      message: "Customer marked as issued successfully and SMS sent.",
       customerId: customerId,
     });
   } catch (error) {

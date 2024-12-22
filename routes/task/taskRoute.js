@@ -3,8 +3,10 @@
 const express = require('express');
 
 const { createTaskForIssuingTrashBags } = require('../../controller/task/createcollectionTask.js');
-const { getTaskDetails } = require('../../controller/task/getTaskDetails.js');
+const { getTaskDetails, fetchMyTasks, fetchTaskDetails } = require('../../controller/task/getTaskDetails.js');
 const { markCustomerAsIssued } = require('../../controller/task/maskBagsIssued.js');
+const { verifyToken } = require('../../middleware/verifyToken.js');
+const checkAccess = require('../../middleware/roleVerify.js');
 
 
 
@@ -12,11 +14,14 @@ const { markCustomerAsIssued } = require('../../controller/task/maskBagsIssued.j
 const router = express.Router();
 
 // Route to create a new customer
-router.post('/create-trashbag-task', createTaskForIssuingTrashBags);
+router.post('/create-trashbag-task', verifyToken, checkAccess('TrashBagTask', 'create'),  createTaskForIssuingTrashBags);
 
-router.get('/trashbag-task/:taskId', getTaskDetails);
+router.get('/fetch-task/',verifyToken, checkAccess('TrashBagTask', 'read'), fetchMyTasks);
 
-router.post('/trashbag-issed', markCustomerAsIssued);
+router.get('/fetch-task-details/:taskId',verifyToken, checkAccess('TrashBagTask', 'read'), fetchTaskDetails);
+
+
+router.post('/trashbag-issed',verifyToken, checkAccess('TrashBagTask', 'update'), markCustomerAsIssued);
 
 
 

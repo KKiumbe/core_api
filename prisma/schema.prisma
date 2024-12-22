@@ -72,16 +72,17 @@ model Customer {
 
 model Task {
   id        String   @id @default(uuid())
-  type      String   // Task type (e.g., "delivery", "collection")
-  status    String   // Task status (e.g., "PENDING", "COMPLETED")
+  type      String
+  status    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   declaredBags Int?
+  createdBy String ? // Add this field to track the user who created the task
 
-  // Reverse relation to TrashBagIssuance
-  trashBagIssuances TrashBagIssuance[] // Relation to trash bag issuances linked to this task
-  taskAssignees     TaskAssignee[]    // Relationship to employees assigned to the task
+  trashBagIssuances TrashBagIssuance[] 
+  taskAssignees     TaskAssignee[]
 }
+
 
 
 model Notification {
@@ -209,15 +210,16 @@ model MpesaTransaction {
 
 // SMS model
 model SMS {
-  id           String    @id @default(uuid())
-  clientsmsid  Int       @unique 
-  customerId   String?  
-  mobile       String    
-  message      String    
-  status       String    
-  response     Json?     
-  createdAt    DateTime  @default(now())
+  id           String   @id @default(uuid())
+  clientsmsid  String      @unique
+  customerId   String
+  mobile       String
+  message      String
+  status       String
+  createdAt    DateTime @default(now())
 }
+
+
 
 // Enums
 enum CustomerStatus {

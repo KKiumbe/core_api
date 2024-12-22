@@ -2,6 +2,8 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 const axios = require('axios');
+const { v4: uuidv4 } = require('uuid');
+const { sendSMS } = require('../../routes/sms/sms');
 
 
 
@@ -153,7 +155,7 @@ const MpesaPaymentSettlement = async (req, res) => {
             const text = `Dear ${customer.firstName}, payment of KES ${totalAmount} for garbage collection services received successfully. ${balanceMessage}. Always use your phone number as the account number, Thank you!`;
            //const mobile = customer.phoneNumber;
            
-            await sendSMS(text,customer);
+           await sendSMS(text,customer);
      
 
     } catch (error) {
@@ -197,67 +199,72 @@ const MpesaPaymentSettlement = async (req, res) => {
 //     }
 // };
 
-// Function to send SMS with balance check
-const sendSMS = async (text, customer) => {
-    try {
-        if (!customer.phoneNumber) {
-            throw new Error("Customer's phone number is missing.");
-        }
 
-        const mobile = customer.phoneNumber; // Ensure mobile is a string with the phone number
-        const clientsmsid = Math.floor(Math.random() * 1000000);
 
-        // Check SMS balance
-        // const balance = await checkSmsBalance();
-        // if (balance < 1) {
-        //     throw new Error('Insufficient SMS balance');
-        // }
+// const sendSMS = async (text, customer) => {
+//     const clientsmsid = uuidv4();
+//     try {
+//         if (!customer.phoneNumber) {
+//             throw new Error("Customer's phone number is missing.");
+//         }
 
-        // Create an SMS record with initial status 'pending'
-        const smsRecord = await prisma.sms.create({
-            data: {
-                clientsmsid,
-                customerId: customer.id,
-                mobile,
-                message: text,
-                status: 'pending',
-            },
-        });
+//        // Generate a unique string for clientsmsid
+//         const mobile = customer.phoneNumber;
 
-        // Construct the payload following the exact structure needed
-        const payload = {
-            apikey: SMS_API_KEY,
-            partnerID: PARTNER_ID,
-            message: text,        // Message content
-            shortcode: SHORTCODE,  // Sender ID or shortcode
-            mobile: mobile,        // Phone number in international format
-        };
+//         console.log('Generated clientsmsid:', clientsmsid);
 
-        console.log("This is payload:", JSON.stringify(payload));  // Log to confirm correct payload format
+//         // Create an SMS record with initial status 'pending'
+//         const smsRecord = await prisma.sms.create({
+//             data: {
+//                 clientsmsid,
+//                 customerId: customer.id,
+//                 mobile,
+//                 message: text,
+//                 status: 'pending',
+//             },
+//         });
 
-        const response = await axios.post(SMS_ENDPOINT, payload);
+//         console.log('SMS record created:', smsRecord);
 
-        // Update SMS record status to 'sent' after successful send
-        await prisma.sms.update({
-            where: { id: smsRecord.id },
-            data: { status: 'sent' },
-        });
+//         // Construct the payload for sending the SMS
+//         const payload = {
+//             apikey: SMS_API_KEY,
+//             partnerID: PARTNER_ID,
+//             message: text,
+//             shortcode: SHORTCODE,
+//             mobile, // Ensure mobile is in the correct format
+//         };
 
-        return response.data;
-    } catch (error) {
-        console.error('Error sending SMS:', error);
+//         console.log('Payload for SMS:', JSON.stringify(payload));
 
-        // Update SMS status to 'failed' if there's an error
-        if (clientsmsid) {
-            await prisma.sms.update({
-                where: { clientsmsid },
-                data: { status: 'failed' },
-            });
-        }
+//         const response = await axios.post(SMS_ENDPOINT, payload);
 
-        throw new Error(error.response ? error.response.data : 'Failed to send SMS.');
-    }
-};
+//         // Update SMS record status to 'sent' after successful send
+//         await prisma.sms.update({
+//             where: { id: smsRecord.id },
+//             data: { status: 'sent' },
+//         });
+
+//         return response.data;
+//     } catch (error) {
+//         console.error('Error sending SMS:', error);
+
+//         // Update SMS status to 'failed' if there's an error
+//         try {
+//             if (clientsmsid) {
+//                 await prisma.sms.update({
+//                     where: { clientsmsid },
+//                     data: { status: 'failed' },
+//                 });
+//             }
+//         } catch (updateError) {
+//             console.error('Error updating SMS status to failed:', updateError);
+//         }
+
+//         throw new Error(error.response?.data || 'Failed to send SMS.');
+//     }
+// };
+
 
 
 

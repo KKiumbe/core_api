@@ -9,7 +9,7 @@ const userRoutes = require('./routes/userRoute/userRoute.js');
 const invoiceRoutes = require('./routes/invoices/invoiceRoute.js');
 const mpesaRoute = require('./routes/mpesa/mpesaRoute.js');
 const collectionRoute = require('./routes/collection/collectionRoute.js');
-const sendtoGroup = require('./routes/sms/sendSms.js');
+const sendSmsRoute = require('./routes/sms/sendSmsRoute.js');
 const receiptRoute = require('./routes/receipt/receiptingRoute.js');
 const paymentRoute = require('./routes/payment/paymentRoutes.js');
 const statsRoute = require('./routes/stats/statsRoute.js');
@@ -43,7 +43,7 @@ app.use(cors({
 // Use customer routes
 app.use('/api', customerRoutes);
 app.use('/api', userRoutes);
-app.use('/api', sendtoGroup);
+app.use('/api', sendSmsRoute);
 app.use('/api', invoiceRoutes);
 app.use('/api', mpesaRoute);
 app.use('/api', collectionRoute);
@@ -51,7 +51,7 @@ app.use('/api', receiptRoute);
 app.use('/api', paymentRoute);
 app.use('/api', statsRoute);
 app.use('/api', statsms);
-app.use('/api', uploadcustomers); // Adjust your API path as needed
+app.use('/api', uploadcustomers); 
 app.use('/api', customerdetailsRoute); 
 app.use('/api', smsBalanceRoute); 
 app.use('/api', reportsReoute); 

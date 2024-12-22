@@ -1,67 +1,137 @@
-const { PrismaClient } = require("@prisma/client");
+const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-const getTaskDetails = async (req, res) => {
-  const { taskId } = req.params; // Get the taskId from the URL parameter
+
+
+const fetchMyTasks = async (req, res) => {
+  const userId = req.user.id; // Ensure user ID is extracted from the authenticated user
 
   try {
-    // Fetch task details
-    const task = await prisma.task.findUnique({
-      where: { id: taskId },
-      select: {
-        id: true,
-        type: true,
-        status: true,
-        declaredBags: true,
-        createdAt: true,
-        updatedAt: true,
+    // Fetch tasks assigned to the user
+    const assignedTasks = await prisma.task.findMany({
+      where: {
+        taskAssignees: {
+          some: {
+            assigneeId: userId, // Check if the user is an assignee
+          },
+        },
       },
-    });
-
-    if (!task) {
-      return res.status(404).json({ error: "Task not found." });
-    }
-
-    // Fetch customers assigned to this task from TrashBagIssuance table
-    const customers = await prisma.trashBagIssuance.findMany({
-      where: { taskId: taskId },
-      select: {
-        customer: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            phoneNumber: true,
+      include: {
+        taskAssignees: {
+          include: {
+            assignee: true, // Include assignee details
           },
         },
       },
     });
 
-    // Format customer data
-    const customerList = customers.map((cust) => ({
-      customerId: cust.customer.id,
-      name: `${cust.customer.firstName} ${cust.customer.lastName}`,
-      phoneNumber: cust.customer.phoneNumber,
-    }));
-
-    // Return task details and the list of customers
-    res.status(200).json({
-      taskDetails: {
-        taskId: task.id,
-        type: task.type,
-        status: task.status,
-        declaredBags: task.declaredBags,
-        createdAt: task.createdAt,
-        updatedAt: task.updatedAt,
+    // Fetch tasks created/assigned by the user
+    const createdTasks = await prisma.task.findMany({
+      where: {
+        createdBy: userId, // Ensure you track the `createdBy` field in your schema
       },
-      customers: customerList, // List of customers under the task
+      include: {
+        taskAssignees: {
+          include: {
+            assignee: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json({
+      assignedToMe: assignedTasks,
+      assignedByMe: createdTasks,
     });
   } catch (error) {
-    console.error("Error fetching task details:", error);
-    res.status(500).json({ error: "Error fetching task details." });
+    console.error("Error fetching tasks:", error);
+    res.status(500).json({ error: "Failed to fetch tasks." });
   }
 };
 
+
+
+
+/**
+ * Fetch detailed information for a specific task
+ */
+
+
+const fetchTaskDetails = async (req, res) => {
+  try {
+      const { taskId } = req.params;
+
+      // Fetch the task details
+      const task = await prisma.task.findUnique({
+          where: { id: taskId },
+          include: {
+              taskAssignees: {
+                  include: {
+                      assignee: {
+                          select: {
+                              id: true,
+                              firstName: true,
+                              lastName: true,
+                              phoneNumber: true,
+                          },
+                      },
+                  },
+              },
+              trashBagIssuances: {
+                  include: {
+                      customer: {
+                          select: {
+                              id: true,
+                              firstName: true,
+                              lastName: true,
+                              phoneNumber: true,
+                          },
+                      },
+                  },
+              },
+          },
+      });
+
+      if (!task) {
+          return res.status(404).json({ message: "Task not found" });
+      }
+
+      // Format the response
+      const response = {
+          taskDetails: {
+              taskId: task.id,
+              type: task.type,
+              status: task.status,
+              declaredBags: task.declaredBags,
+              createdAt: task.createdAt,
+              updatedAt: task.updatedAt,
+          },
+          assignees: task.taskAssignees.map((assignee) => ({
+              assigneeId: assignee.assignee.id,
+              name: `${assignee.assignee.firstName} ${assignee.assignee.lastName}`,
+              phoneNumber: assignee.assignee.phoneNumber,
+          })),
+          customers: task.trashBagIssuances.map((issuance) => ({
+              customerId: issuance.customer.id,
+              name: `${issuance.customer.firstName} ${issuance.customer.lastName}`,
+              phoneNumber: issuance.customer.phoneNumber,
+              bagsIssued: issuance.bagsIssued, // Include bagsIssued status
+          })),
+      };
+
+      res.status(200).json(response);
+  } catch (error) {
+      console.error("Error fetching task details:", error);
+      res.status(500).json({
+          message: "Failed to fetch task details",
+          error: error.message,
+      });
+  }
+};
+
+
+
 module.exports = {
-  getTaskDetails,
+    fetchMyTasks,
+    fetchTaskDetails,
 };

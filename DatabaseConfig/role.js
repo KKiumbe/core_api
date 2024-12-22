@@ -24,6 +24,7 @@ const ROLE_PERMISSIONS = {
   },
   collector: {
     Customer: ["read", "update"],
+    TrashBagTask: ["create", "update","read"],
   },
   default: {},
 };

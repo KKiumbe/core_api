@@ -1,6 +1,7 @@
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const { PrismaClient } = require('@prisma/client');
+
 const prisma = new PrismaClient();
 
 const ENDPOINT = process.env.BULK_SMS_ENDPOINT;
@@ -24,66 +25,69 @@ const checkSmsBalance = async () => {
 
 const sendBulkSMS = async (customers) => {
     try {
-        // Map customer data and insert into `sms` collection with status "pending"
-        const smsList = await Promise.all(
-            customers.map(async (customer) => {
-              
-                const clientsmsid = Math.floor(Math.random() * 1000000);
-
-                // Save each SMS to the database with status "pending"
-                await prisma.sms.create({
-                    data: {
-                        clientsmsid,
-                        customerId: customer.id,
-                        mobile: customer.phoneNumber,
-                        message: customer.message,
-                        status: 'sent',
-                    },
-                });
-
-                // Return SMS data for API request
-                return {
-                    partnerID: process.env.PARTNER_ID,
-                    apikey: process.env.SMS_API_KEY,
-                    pass_type: "plain",
-                    clientsmsid,
-                    mobile: customer.phoneNumber,
-                    message: customer.message,
-                    shortcode: process.env.SHORTCODE,
-                };
-            })
-        );
-
-        if (smsList.length > 0) {
-            const response = await axios.post(ENDPOINT, {
-                count: smsList.length,
-                smslist: smsList,
-            });
-
-            if (response.data.success) {
-                // Extract IDs of successfully sent messages
-                const sentIds = smsList.map(sms => sms.clientsmsid);
-
-                // Update the SMS status to "sent" in the database
-                await prisma.sms.updateMany({
-                    where: { clientsmsid: { in: sentIds } },
-                    data: { status: 'sent' },
-                });
-
-                console.log(`Updated status to 'sent' for ${sentIds.length} SMS records.`);
-            }
-
-            console.log(`Sent ${smsList.length} bulk SMS messages.`);
-            return response.data;
-        } else {
-            console.log('No valid customers to send SMS.');
-            return null;
+      const smsList = await Promise.all(
+        customers.map(async (customer) => {
+          if (!customer.id) {
+            throw new Error(`Missing customer ID for customer: ${JSON.stringify(customer)}`);
+          }
+  
+          const clientsmsid = uuidv4();
+          console.log(`Generated clientsmsid: ${clientsmsid}`);
+  
+          // Save each SMS to the database with status "pending"
+          await prisma.sMS.create({
+            data: {
+              clientsmsid,
+              customerId: customer.id, // Ensure this field is correctly passed
+              mobile: sanitizePhoneNumber(customer.phoneNumber),
+              message: customer.message,
+              status: "pending",
+            },
+          });
+  
+          // Return SMS data for API request
+          return {
+            partnerID: process.env.PARTNER_ID,
+            apikey: process.env.SMS_API_KEY,
+            pass_type: "plain",
+            clientsmsid,
+            mobile: sanitizePhoneNumber(customer.phoneNumber),
+            message: customer.message,
+            shortcode: process.env.SHORTCODE,
+          };
+        })
+      );
+  
+      if (smsList.length > 0) {
+        const response = await axios.post(ENDPOINT, {
+          count: smsList.length,
+          smslist: smsList,
+        });
+  
+        if (response.data.success) {
+          const sentIds = smsList.map((sms) => sms.clientsmsid);
+  
+          // Update the SMS status to "sent" in the database
+          await prisma.sMS.updateMany({
+            where: { clientsmsid: { in: sentIds } },
+            data: { status: "sent" },
+          });
+  
+          console.log(`Updated status to 'sent' for ${sentIds.length} SMS records.`);
         }
+  
+        console.log(`Sent ${smsList.length} bulk SMS messages.`);
+        return response.data;
+      } else {
+        console.log("No valid customers to send SMS.");
+        return null;
+      }
     } catch (error) {
-        console.error('Error sending SMS:', error);
-        throw new Error('SMS sending failed');
+      console.error("Error sending SMS:", error);
+      throw new Error("SMS sending failed");
     }
-};
+  };
+  
 
 
 

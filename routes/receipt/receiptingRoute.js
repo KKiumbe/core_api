@@ -7,8 +7,8 @@ const checkAccess = require('../../middleware/roleVerify.js');
 
 const router = express.Router();
 
-router.post('/manual-receipt', MpesaPaymentSettlement);
-router.post('/manual-cash-payment', manualCashPayment);
+router.post('/manual-receipt',verifyToken,checkAccess('Receipt','create'), MpesaPaymentSettlement);
+router.post('/manual-cash-payment', verifyToken,checkAccess('Receipt','create'), manualCashPayment);
 
 router.get('/receipts' , verifyToken,checkAccess('Receipt','read'),getReceipts );
 

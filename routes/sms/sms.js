@@ -1,96 +1,107 @@
 const axios = require('axios');
-const { PrismaClient } = require('@prisma/client'); // Import Prisma Client
-const prisma = new PrismaClient(); // Initialize Prisma Client
+const { PrismaClient } = require('@prisma/client');
+const { v4: uuidv4 } = require('uuid');
 
-// Load environment variables
+const prisma = new PrismaClient();
+
 const SMS_API_KEY = process.env.SMS_API_KEY;
 const PARTNER_ID = process.env.PARTNER_ID;
 const SHORTCODE = process.env.SHORTCODE;
 const SMS_ENDPOINT = process.env.SMS_ENDPOINT;
 const SMS_BALANCE_URL = process.env.SMS_BALANCE_URL;
 
-// Function to check SMS balance
-const checkSmsBalance = async () => {
-    try {
-        const response = await axios.post(SMS_BALANCE_URL, {
-            apikey: SMS_API_KEY,
-            partnerID: PARTNER_ID
-        });
-        return response.data.balance; // Adjust this based on actual response structure
-    } catch (error) {
-        console.error('Error fetching SMS balance:', error);
-        throw new Error('Failed to retrieve SMS balance');
-    }
-};
-
-// Function to send SMS with balance check
 const sendSMS = async (text, customer) => {
-    let clientsmsid;  // Declare clientsmsid outside of try-catch block to avoid 'undefined' errors
+    let clientsmsid;
 
     try {
-        // Check if there is at least 1 SMS balance before sending
+        if (!customer || !customer.phoneNumber) {
+            throw new Error("Customer's phone number is missing.");
+        }
+
+        // Check SMS balance
         const balance = await checkSmsBalance();
         if (balance < 1) {
             throw new Error('Insufficient SMS balance');
         }
 
-        // Generate a unique `clientsmsid` for tracking
-        clientsmsid = Math.floor(Math.random() * 1000000);
-        const mobile = customer.phoneNumber;
+        // Generate unique clientsmsid
+        clientsmsid = uuidv4();
+        const mobile = sanitizePhoneNumber(customer.phoneNumber);
         const customerId = customer.id;
 
-        // Convert the `message` to a string (ensure it's properly stringified if it's an object)
+        console.log(`Creating SMS record with clientsmsid: ${clientsmsid}`);
 
-        // Create an SMS record with initial status 'pending'
-        const smsRecord = await prisma.sms.create({
+        // Create SMS record in the database
+        const smsRecord = await prisma.sMS.create({
             data: {
                 clientsmsid,
                 customerId,
                 mobile,
-                message:text,  // Ensure this is a string, not an object
+                message: text,
                 status: 'pending',
             },
         });
 
+        console.log(`SMS record created: ${JSON.stringify(smsRecord)}`);
+
+        // Prepare SMS payload
         const payload = {
             partnerID: PARTNER_ID,
             apikey: SMS_API_KEY,
-            message:text,  // Ensure this is the correct message
+            message: text,
             shortcode: SHORTCODE,
-            mobile: sanitizePhoneNumber(mobile),
+            mobile,
         };
 
-        console.log(`This is payload: ${JSON.stringify(payload)}`);
+        console.log(`Sending SMS with payload: ${JSON.stringify(payload)}`);
 
-        // Send the SMS
+        // Send SMS
         const response = await axios.post(SMS_ENDPOINT, payload);
 
-        // Ensure the smsRecord exists before trying to update
-        if (smsRecord && smsRecord.id) {
-            // Update SMS record status to 'sent' after successful send
-            await prisma.sms.update({
-                where: { id: smsRecord.id },
-                data: { status: 'sent' },
-            });
-        }
+        console.log('SMS sent successfully. Updating status to "sent".');
 
-        return response.data; // Return the response for further processing if needed
+        // Update SMS record to "sent"
+        await prisma.sMS.update({
+            where: { id: smsRecord.id },
+            data: { status: 'sent' },
+        });
+
+        return response.data;
     } catch (error) {
-        console.error('Error sending SMS:', error);
+        console.error('Error sending SMS:', error.message);
 
-        // Ensure `clientsmsid` is defined before using it in error handling
+        // Handle failed SMS
         if (clientsmsid) {
-            await prisma.sms.update({
-                where: { clientsmsid },  // Ensure we're using the correct unique identifier here
-                data: { status: 'failed' },
-            });
+            try {
+                await prisma.sMS.update({
+                    where: { clientsmsid },
+                    data: { status: 'failed' },
+                });
+                console.log(`SMS status updated to "failed" for clientsmsid: ${clientsmsid}`);
+            } catch (updateError) {
+                console.error('Error updating SMS status to "failed":', updateError.message);
+            }
         }
 
         throw new Error(error.response ? error.response.data : 'Failed to send SMS.');
     }
 };
 
+// Function to check SMS balance
+const checkSmsBalance = async () => {
+    try {
+        const response = await axios.post(SMS_BALANCE_URL, {
+            apikey: SMS_API_KEY,
+            partnerID: PARTNER_ID,
+        });
+        return response.data.balance;
+    } catch (error) {
+        console.error('Error fetching SMS balance:', error.message);
+        throw new Error('Failed to retrieve SMS balance');
+    }
+};
 
+// Function to sanitize phone numbers
 function sanitizePhoneNumber(phone) {
     if (typeof phone !== 'string') {
         console.error('Invalid phone number format:', phone);
@@ -107,7 +118,6 @@ function sanitizePhoneNumber(phone) {
         return `254${phone}`;
     }
 }
-
 
 module.exports = {
     sendSMS,

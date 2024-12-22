@@ -3,6 +3,7 @@ const prisma = new PrismaClient();
 
 const createTaskForIssuingTrashBags = async (req, res) => {
   const { assigneeId, collectionDay, declaredBags } = req.body; // Single assigneeId and number of declared bags
+  const userId = req.user.id; // Fetching the ID of the user making the request
 
   // Validate inputs
   if (!assigneeId || declaredBags <= 0) {
@@ -48,6 +49,7 @@ const createTaskForIssuingTrashBags = async (req, res) => {
         type: "Trash Bag Issuance", // Indicating this is a trash bag issuance task
         status: "PENDING", // Task is pending until the collector starts
         declaredBags: declaredBags, // Declaring the number of bags in the task
+        createdBy: userId, // Track who created the task
       },
     });
 
@@ -73,7 +75,7 @@ const createTaskForIssuingTrashBags = async (req, res) => {
 
     // Create a notification for the collector
     const notificationMessage = `New task assigned: Trash Bag Issuance with ${declaredBags} bags.`;
-    
+
     await prisma.notification.create({
       data: {
         message: notificationMessage,  // Task notification message
