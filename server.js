@@ -25,7 +25,7 @@ const permissionsRoutes = require('./routes/permision/permissionRoute.js')
 const createTask = require('./routes/task/taskRoute.js')
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = 3000;
 
 app.use(cookieParser());
 //app.use(verifyToken);
