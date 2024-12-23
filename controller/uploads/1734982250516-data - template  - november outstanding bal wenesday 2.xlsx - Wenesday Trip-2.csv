@@ -1,0 +1,3 @@
+firstName,lastName,email,phoneNumber,secondaryPhoneNumber,gender,county,town,location,estateName,building,houseNumber,category,monthlyCharge,status,garbageCollectionDay,collected,closingBalance
+mary,wangui,,0722230603,,female,kajiado,matasia,,,,,own cmpd,1000,,FRIDAY,,1000
+kevin,kiumbe,,074342432,,male,nairobi,ddd,,,,,,500,,MONDAY,,

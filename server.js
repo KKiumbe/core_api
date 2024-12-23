@@ -41,23 +41,23 @@ app.use(cors({
 
 
 // Use customer routes
-app.use('/api', customerRoutes);
-app.use('/api', userRoutes);
-app.use('/api', sendSmsRoute);
-app.use('/api', invoiceRoutes);
-app.use('/api', mpesaRoute);
-app.use('/api', collectionRoute);
-app.use('/api', receiptRoute);
-app.use('/api', paymentRoute);
-app.use('/api', statsRoute);
-app.use('/api', statsms);
-app.use('/api', uploadcustomers); 
-app.use('/api', customerdetailsRoute); 
-app.use('/api', smsBalanceRoute); 
-app.use('/api', reportsReoute); 
-app.use('/api', userManagementRoute); 
-app.use('/api', permissionsRoutes);
-app.use('/api', createTask);
+app.use('/core', customerRoutes);
+app.use('/core', userRoutes);
+app.use('/core', sendSmsRoute);
+app.use('/core', invoiceRoutes);
+app.use('/core', mpesaRoute);
+app.use('/core', collectionRoute);
+app.use('/core', receiptRoute);
+app.use('/core', paymentRoute);
+app.use('/core', statsRoute);
+app.use('/core', statsms);
+app.use('/core', uploadcustomers); 
+app.use('/core', customerdetailsRoute); 
+app.use('/core', smsBalanceRoute); 
+app.use('/core', reportsReoute); 
+app.use('/core', userManagementRoute); 
+app.use('/core', permissionsRoutes);
+app.use('/core', createTask);
 
 
 // Start the HTTP server

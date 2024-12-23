@@ -59,7 +59,7 @@ const markCustomerAsIssued = async (req, res) => {
 
     // Prepare SMS message
     const customer = customerIssuance.customer;
-    const text = `Dear ${customer.firstName}, your trash bags have been successfully issued. Thank you for your cooperation!`;
+    const text = `Dear ${customer.firstName}, you have been issued with 4 trash bags for month of december. Thank you for your cooperation!`;
 
     // Send SMS notification
     try {

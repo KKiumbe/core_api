@@ -72,7 +72,7 @@ async function settleInvoice() {
             await prisma.$transaction(async (transactionPrisma) => {
                 // Adjust closing balance and payment amount
                 let adjustedPaymentAmount = paymentAmount;
-                let newClosingBalance = customer.closingBalance - paymentAmount;
+                // let newClosingBalance = customer.closingBalance - paymentAmount;
 
             
 
@@ -132,9 +132,9 @@ async function settleInvoice() {
                     ? `an overpayment of KES ${Math.abs(updatedClosingBalance)}`
                     : `KES ${updatedClosingBalance}`;
 
-                const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. Your current balance is ${finalBalance}. Help us serve you better by using Paybill No :4107197 , your phone number as the account number. Customer support number: 0726594923`;
+                const text = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. Your current balance is ${finalBalance}. Help us serve you better by using Paybill No :4107197 , your phone number as the account number. Customer support number: 0726594923`;
 
-                //await sendSMS(message, customer);
+                await sendSMS(text, customer);
                 console.log(`Processed payment and created receipt for transaction ${MpesaCode}.`);
             });
         }

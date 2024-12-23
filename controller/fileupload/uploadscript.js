@@ -22,13 +22,26 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== 'text/csv') {
+      return cb(new Error('Only CSV files are allowed'));
+    }
+    cb(null, true);
+  },
+});
 
 // Helper function to validate and transform customer data
 const validateCustomerData = (data) => {
-  const requiredFields = ['firstName', 'lastName', 'phoneNumber', 'monthlyCharge', 'garbageCollectionDay'];
+  const requiredFields = [
+    'firstName',
+    'lastName',
+    'phoneNumber',
+    'monthlyCharge',
+    'garbageCollectionDay',
+  ];
 
-  // Check for missing required fields
   for (const field of requiredFields) {
     if (!data[field]) {
       console.warn(`Missing required field: ${field} for customer ${data.firstName || 'Unknown'}`);
@@ -36,7 +49,6 @@ const validateCustomerData = (data) => {
     }
   }
 
-  // Parse fields
   return {
     firstName: data.firstName,
     lastName: data.lastName,
@@ -52,14 +64,14 @@ const validateCustomerData = (data) => {
     houseNumber: data.houseNumber || null,
     category: data.category || null,
     monthlyCharge: parseFloat(data.monthlyCharge),
-    status: 'ACTIVE', // default status
+    status: 'ACTIVE',
     garbageCollectionDay: data.garbageCollectionDay,
     collected: data.collected ? data.collected.toLowerCase() === 'true' : false,
     closingBalance: parseFloat(data.closingBalance) || 0.0,
   };
 };
 
-// Controller function to upload and process CSV
+// Controller function to upload and process customer CSV
 const uploadCustomers = async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: 'No file uploaded' });
@@ -71,14 +83,13 @@ const uploadCustomers = async (req, res) => {
   const existingEmails = new Set();
 
   try {
-    // Fetch existing customer data to prevent duplicates
     const existingCustomers = await prisma.customer.findMany({
       select: {
         phoneNumber: true,
         email: true,
       },
     });
-    
+
     existingCustomers.forEach((customer) => {
       if (customer.phoneNumber) existingPhoneNumbers.add(customer.phoneNumber);
       if (customer.email) existingEmails.add(customer.email);
@@ -93,10 +104,8 @@ const uploadCustomers = async (req, res) => {
     .on('data', (data) => {
       const customer = validateCustomerData(data);
 
-      // Skip if customer data is invalid
       if (!customer) return;
 
-      // Check for duplicate phoneNumber or email
       if (existingPhoneNumbers.has(customer.phoneNumber)) {
         console.warn(`Duplicate phone number found: ${customer.phoneNumber}. Skipping entry.`);
         return;
@@ -106,14 +115,12 @@ const uploadCustomers = async (req, res) => {
         return;
       }
 
-      // Add to customers array if valid
       customers.push(customer);
       existingPhoneNumbers.add(customer.phoneNumber);
       if (customer.email) existingEmails.add(customer.email);
     })
     .on('end', async () => {
       try {
-        // Save validated customers to database
         if (customers.length > 0) {
           await prisma.customer.createMany({ data: customers });
           res.status(200).json({ message: 'Customers uploaded successfully', customers });
@@ -131,8 +138,7 @@ const uploadCustomers = async (req, res) => {
     });
 };
 
-
-
+// Controller function to update customers' closing balance
 const updateCustomersClosingBalance = async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: 'No file uploaded' });
@@ -144,7 +150,6 @@ const updateCustomersClosingBalance = async (req, res) => {
   fs.createReadStream(filePath)
     .pipe(csv())
     .on('data', (data) => {
-      // Ensure each row has phoneNumber and closingBalance fields
       if (data.phoneNumber && data.closingBalance) {
         updates.push({
           phoneNumber: data.phoneNumber,
@@ -156,14 +161,14 @@ const updateCustomersClosingBalance = async (req, res) => {
     })
     .on('end', async () => {
       try {
-        // Batch update customers based on phone numbers
-        for (const update of updates) {
-          await prisma.customer.updateMany({
+        const updatePromises = updates.map((update) =>
+          prisma.customer.updateMany({
             where: { phoneNumber: update.phoneNumber },
             data: { closingBalance: update.closingBalance },
-          });
-        }
-        
+          })
+        );
+        await Promise.all(updatePromises);
+
         res.status(200).json({ message: 'Customers updated successfully', updates });
       } catch (error) {
         console.error('Error updating customers:', error);
@@ -176,11 +181,8 @@ const updateCustomersClosingBalance = async (req, res) => {
     });
 };
 
-
-
- 
-// Export the upload middleware and controller function for use in other files
 module.exports = {
   upload,
-  uploadCustomers,updateCustomersClosingBalance
+  uploadCustomers,
+  updateCustomersClosingBalance,
 };
