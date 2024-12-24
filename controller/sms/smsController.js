@@ -44,7 +44,7 @@ const sendSingleSMS = async (req, res) => {
     const sanitizedNumber = sanitizePhoneNumber(mobile);
     const clientsmsid = uuidv4();
 
-    const smsRecord = await prisma.sms.create({
+    const smsRecord = await prisma.sMS.create({
       data: {
         clientsmsid,
         mobile: sanitizedNumber,
