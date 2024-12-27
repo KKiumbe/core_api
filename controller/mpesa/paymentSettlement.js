@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
-const { sendSMS } = require('../../routes/sms/sms');
+const { sendSMS } = require('../../routes/sms/sendSMS');
+
 const prisma = new PrismaClient();
 
 async function generateUniqueReceiptNumber() {
@@ -132,9 +133,10 @@ async function settleInvoice() {
                     ? `an overpayment of KES ${Math.abs(updatedClosingBalance)}`
                     : `KES ${updatedClosingBalance}`;
 
-                const text = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. Your current balance is ${finalBalance}. Help us serve you better by using Paybill No :4107197 , your phone number as the account number. Customer support number: 0726594923`;
+                const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. Your current balance is ${finalBalance}. Help us serve you better by using Paybill No :4107197 , your phone number as the account number. Customer support number: 0726594923`;
+                const mobile = customer.phoneNumber;
 
-                await sendSMS(text, customer);
+                await sendSMS(mobile, message);
                 console.log(`Processed payment and created receipt for transaction ${MpesaCode}.`);
             });
         }

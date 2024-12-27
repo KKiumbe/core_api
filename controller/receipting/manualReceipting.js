@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
-const { sendSMS } = require('../../routes/sms/sms');
+const { sendSMS } = require('../sms/smsController');
+
 const prisma = new PrismaClient();
 
 function generateReceiptNumber() {
@@ -84,10 +85,12 @@ const manualCashPayment = async (req, res) => {
                 ? `an overpayment of KES ${Math.abs(newClosingBalance)}`
                 : `KES ${newClosingBalance}`;
 
-            const text = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ` +
+            const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ` +
                 `Your balance is ${balanceMessage}. Help us serve you better by using Paybill No: 4107197, your phone number as the account number. Customer support: 0726594923.`;
 
-            //await sendSMS(text, customer);
+                const mobile = customer.phoneNumber;
+
+            await sendSMS(message, mobile);
 
             return res.status(201).json({
                 message: 'Payment applied to closing balance successfully. SMS notification sent.',
@@ -150,10 +153,10 @@ const manualCashPayment = async (req, res) => {
         const balanceMessage = newClosingBalance < 0
             ? `an overpayment of KES ${Math.abs(newClosingBalance)}`
             : `KES ${newClosingBalance}`;
-        const text = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ` +
+        const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ` +
             `Your balance is ${balanceMessage}. Help us serve you better by using Paybill No: 4107197, your phone number as the account number. Customer support: 0726594923.`;
 
-       // await sendSMS(text, customer);
+            await sendSMS(message, mobile);
 
         // Respond with success
         res.status(201).json({

@@ -32,48 +32,111 @@ const sanitizePhoneNumber = (phone) => {
   return `254${phone}`;
 };
 
-// Send SMS to a single recipient
-const sendSingleSMS = async (req, res) => {
-  const { message, mobile } = req.body;
 
-  if (!message || !mobile) {
-    return res.status(400).json({ error: 'Message and mobile number are required.' });
-  }
 
+
+
+const sendToOne = async (req, res) => {
+  const { mobile, message } = req.body;
   try {
-    const sanitizedNumber = sanitizePhoneNumber(mobile);
-    const clientsmsid = uuidv4();
-
-    const smsRecord = await prisma.sMS.create({
-      data: {
-        clientsmsid,
-        mobile: sanitizedNumber,
-        message,
-        status: 'pending',
-      },
-    });
-
-    const payload = {
-      apikey: SMS_API_KEY,
-      partnerID: PARTNER_ID,
-      message,
-      shortcode: SHORTCODE,
-      mobile: sanitizedNumber,
-    };
-
-    const response = await axios.post(SMS_ENDPOINT, payload);
-
-    await prisma.sms.update({
-      where: { id: smsRecord.id },
-      data: { status: 'sent', response: response.data },
-    });
-
-    res.status(200).json({ message: 'SMS sent successfully', data: response.data });
+      const response = await sendSMS(mobile, message);
+      res.status(200).json({ success: true, response });
   } catch (error) {
-    console.error('Error sending SMS:', error);
-    res.status(500).json({ error: 'Failed to send SMS.' });
+      console.error('Error in sendToOne:', error.message);
+      res.status(500).json({ success: false, message: error.message });
   }
 };
+
+const sendSMS = async (mobile, message) => {
+  let clientsmsid;
+
+  try {
+      // Check SMS balance
+      const balance = await checkSmsBalance();
+      if (balance < 1) {
+          throw new Error('Insufficient SMS balance');
+      }
+
+      // Sanitize phone number
+      const sanitizedMobile = sanitizePhoneNumber(mobile);
+
+      // Fetch the customer ID from the database
+      const customer = await prisma.customer.findUnique({
+          where: { phoneNumber: sanitizedMobile },
+      });
+
+      if (!customer) {
+          console.error(`No customer found for phone number: ${sanitizedMobile}`);
+          throw new Error('Customer not found. Please ensure the phone number is correct.');
+      }
+
+      const customerId = customer.id;
+
+      // Generate unique clientsmsid
+      clientsmsid = uuidv4();
+
+      console.log(`Creating SMS record with clientsmsid: ${clientsmsid} for customerId: ${customerId}`);
+
+      // Create SMS record in the database
+      const smsRecord = await prisma.sMS.create({
+          data: {
+              clientsmsid,
+              customerId,
+              mobile: sanitizedMobile,
+              message,
+              status: 'pending',
+          },
+      });
+
+      console.log(`SMS record created: ${JSON.stringify(smsRecord)}`);
+
+      // Prepare SMS payload
+      const payload = {
+          partnerID: PARTNER_ID,
+          apikey: SMS_API_KEY,
+          message,
+          shortcode: SHORTCODE,
+          mobile: sanitizedMobile,
+      };
+
+      console.log(`Sending SMS with payload: ${JSON.stringify(payload)}`);
+
+      // Send SMS
+      const response = await axios.post(SMS_ENDPOINT, payload);
+
+      console.log('SMS sent successfully. Updating status to "sent".');
+
+      // Update SMS record to "sent"
+      await prisma.sMS.update({
+          where: { id: smsRecord.id },
+          data: { status: 'sent' },
+      });
+
+      return response.data;
+  } catch (error) {
+      console.error('Error sending SMS:', {
+          message: error.message,
+          stack: error.stack,
+          mobile,
+      });
+
+      // Handle failed SMS
+      if (clientsmsid) {
+          try {
+              await prisma.sMS.update({
+                  where: { clientsmsid },
+                  data: { status: 'failed' },
+              });
+              console.log(`SMS status updated to "failed" for clientsmsid: ${clientsmsid}`);
+          } catch (updateError) {
+              console.error('Error updating SMS status to "failed":', updateError.message);
+          }
+      }
+
+      throw new Error(error.response ? error.response.data : 'Failed to send SMS.');
+  }
+};
+
 
 // Send bills to all active customers
 const sendBills = async (req, res) => {
@@ -231,5 +294,6 @@ module.exports = {
   sendBill,
   sendBillPerDay,
   sendToGroup,
-  sendSingleSMS,
+  sendSMS,
+  sendToOne
 };

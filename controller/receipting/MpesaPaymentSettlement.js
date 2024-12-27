@@ -3,7 +3,8 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
-const { sendSMS } = require('../../routes/sms/sms');
+const { sendSMS } = require('../sms/smsController.js');
+
 
 
 
@@ -152,10 +153,12 @@ const MpesaPaymentSettlement = async (req, res) => {
             const balanceMessage = finalClosingBalance < 0
                 ? `Your closing balance is an overpayment of KES ${Math.abs(finalClosingBalance)}`
                 : `Your closing balance is KES ${finalClosingBalance}`;
-            const text = `Dear ${customer.firstName}, payment of KES ${totalAmount} for garbage collection services received successfully. ${balanceMessage}. Always use your phone number as the account number, Thank you!`;
+            const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} for garbage collection services received successfully. ${balanceMessage}. Always use your phone number as the account number, Thank you!`;
            //const mobile = customer.phoneNumber;
+
+           const mobile = customer.phoneNumber;
            
-           await sendSMS(text,customer);
+           await sendSMS(mobile,message);
      
 
     } catch (error) {
