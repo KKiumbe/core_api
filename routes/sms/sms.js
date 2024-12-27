@@ -22,12 +22,12 @@ const sendSMS = async (mobile, message) => {
         }
 
         // Sanitize phone number
-        const sanitizedMobile = sanitizePhoneNumber(mobile);
+ 
 
         // Fetch the customer ID from the database
         const customer = await prisma.customer.findUnique({
             where: {
-                phoneNumber: sanitizedMobile, // Ensure phoneNumber is unique in your database schema
+                phoneNumber: mobile, // Ensure phoneNumber is unique in your database schema
             },
         });
 
