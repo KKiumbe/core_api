@@ -90,7 +90,7 @@ const manualCashPayment = async (req, res) => {
 
                 const mobile = customer.phoneNumber;
 
-            await sendSMS(message, mobile);
+            await sendSMS(mobile, message);
 
             return res.status(201).json({
                 message: 'Payment applied to closing balance successfully. SMS notification sent.',
@@ -155,8 +155,10 @@ const manualCashPayment = async (req, res) => {
             : `KES ${newClosingBalance}`;
         const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ` +
             `Your balance is ${balanceMessage}. Help us serve you better by using Paybill No: 4107197, your phone number as the account number. Customer support: 0726594923.`;
+            const mobile = customer.phoneNumber;
 
-            await sendSMS(message, mobile);
+            await sendSMS(mobile, message);
+
 
         // Respond with success
         res.status(201).json({

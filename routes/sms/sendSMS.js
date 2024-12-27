@@ -47,7 +47,7 @@ const sendSMS = async (mobile, message) => {
             data: {
                 clientsmsid,
                 customerId,
-                mobile: sanitizedMobile,
+                mobile,
                 message,
                 status: 'pending',
             },
@@ -61,7 +61,7 @@ const sendSMS = async (mobile, message) => {
             apikey: SMS_API_KEY,
             message,
             shortcode: SHORTCODE,
-            mobile: sanitizedMobile,
+            mobile
         };
 
         console.log(`Sending SMS with payload: ${JSON.stringify(payload)}`);

@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
-const { sendSMS } = require('../../routes/sms/sendSMS');
+const { sendSMS } = require('../sms/smsController');
+
 
 const prisma = new PrismaClient();
 
@@ -17,6 +18,7 @@ async function generateUniqueReceiptNumber() {
 
     return receiptNumber;
 }
+
 
 async function settleInvoice() {
     try {
@@ -64,24 +66,13 @@ async function settleInvoice() {
                         firstName: FirstName,
                         receipted: false,
                         createdAt: TransTime,
-                        ref: BillRefNumber 
+                        ref: BillRefNumber,
                     },
                 });
                 continue;
             }
 
             await prisma.$transaction(async (transactionPrisma) => {
-                // Adjust closing balance and payment amount
-                let adjustedPaymentAmount = paymentAmount;
-                // let newClosingBalance = customer.closingBalance - paymentAmount;
-
-            
-
-                // await transactionPrisma.customer.update({
-                //     where: { id: customer.id },
-                //     data: { closingBalance: newClosingBalance },
-                // });
-
                 const payment = await transactionPrisma.payment.create({
                     data: {
                         amount: paymentAmount,
@@ -90,54 +81,89 @@ async function settleInvoice() {
                         firstName: FirstName,
                         receipted: false,
                         createdAt: TransTime,
-                        ref: BillRefNumber 
+                        ref: BillRefNumber,
                     },
                 });
 
-                const receiptNumber = await generateUniqueReceiptNumber();
-                const { receipts, updatedClosingBalance } = await processInvoices(adjustedPaymentAmount, customer.id, payment.id, transactionPrisma);
+                console.log('Payment created:', payment);
 
-                const receiptData = await transactionPrisma.receipt.create({
-                    data: {
-                        amount: paymentAmount,
-                        modeOfPayment: 'MPESA',
-                        paidBy: FirstName,
-                        transactionCode: MpesaCode,
-                        phoneNumber: phone,
-                        paymentId: payment.id,
+                // Check for unpaid or partially paid invoices
+                const invoices = await transactionPrisma.invoice.findMany({
+                    where: {
                         customerId: customer.id,
-                        receiptInvoices: {
-                            create: receipts
-                                .filter((receipt) => receipt.invoiceId) // Remove entries with null invoiceId
-                                .map((receipt) => ({
-                                    invoice: { connect: { id: receipt.invoiceId } },
-                                })),
+                        status: {
+                            in: ['UNPAID', 'PPAID'],
                         },
-                        receiptNumber,
-                        createdAt: new Date(),
                     },
+                    orderBy: { createdAt: 'asc' },
                 });
-                
 
-                await transactionPrisma.payment.update({
-                    where: { id: payment.id },
-                    data: { receipt: { connect: { id: receiptData.id } } },
-                });
+                let remainingAmount = paymentAmount;
+                const receipts = [];
+
+                if (invoices.length > 0) {
+                    for (const invoice of invoices) {
+                        if (remainingAmount <= 0) break;
+
+                        const invoiceDueAmount = invoice.invoiceAmount - invoice.amountPaid;
+                        const paymentForInvoice = Math.min(remainingAmount, invoiceDueAmount);
+
+                        const updatedInvoice = await transactionPrisma.invoice.update({
+                            where: { id: invoice.id },
+                            data: {
+                                amountPaid: invoice.amountPaid + paymentForInvoice,
+                                status: invoice.amountPaid + paymentForInvoice >= invoice.invoiceAmount ? 'PAID' : 'PPAID',
+                            },
+                        });
+
+                        receipts.push({ invoiceId: updatedInvoice.id });
+                        remainingAmount -= paymentForInvoice;
+                    }
+                }
+
+                if (invoices.length === 0 || remainingAmount > 0) {
+                    // No invoices or remaining amount after invoices
+                    const finalClosingBalance = customer.closingBalance - remainingAmount;
+
+                    // Update customer's closing balance
+                    await transactionPrisma.customer.update({
+                        where: { id: customer.id },
+                        data: { closingBalance: finalClosingBalance },
+                    });
+
+                    console.log(`Updated closing balance for customer ${customer.id}: ${finalClosingBalance}`);
+
+                    // Create a receipt for the overpayment or closing balance adjustment
+                    const receiptNumber = await generateUniqueReceiptNumber();
+                    const receipt = await transactionPrisma.receipt.create({
+                        data: {
+                            customerId: customer.id,
+                            amount: remainingAmount,
+                            modeOfPayment: 'MPESA',
+                            receiptNumber,
+                            paymentId: payment.id,
+                            paidBy: FirstName,
+                            createdAt: new Date(),
+                        },
+                    });
+
+                    receipts.push({ invoiceId: null, receiptId: receipt.id });
+
+                    const balanceMessage = finalClosingBalance < 0
+                        ? `an overpayment of KES ${Math.abs(finalClosingBalance)}`
+                        : `KES ${finalClosingBalance}`;
+                    const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. Your balance is ${balanceMessage}. Thank you for your payment.`;
+                    await sendSMS(customer.phoneNumber, message);
+
+                    console.log('SMS sent to customer.');
+                }
 
                 await transactionPrisma.mpesaTransaction.update({
                     where: { id },
                     data: { processed: true },
                 });
 
-                const finalBalance = updatedClosingBalance < 0
-                    ? `an overpayment of KES ${Math.abs(updatedClosingBalance)}`
-                    : `KES ${updatedClosingBalance}`;
-
-                const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. Your current balance is ${finalBalance}. Help us serve you better by using Paybill No :4107197 , your phone number as the account number. Customer support number: 0726594923`;
-                const mobile = customer.phoneNumber;
-
-                await sendSMS(mobile, message);
-                console.log(`Processed payment and created receipt for transaction ${MpesaCode}.`);
+                console.log(`Processed transaction ${MpesaCode} successfully.`);
             });
         }
     } catch (error) {
@@ -145,61 +171,62 @@ async function settleInvoice() {
     }
 }
 
-async function processInvoices(paymentAmount, customerId, paymentId, transactionPrisma) {
-    const invoices = await transactionPrisma.invoice.findMany({
-        where: {
-            customerId,
-            status: {
-                in: ['UNPAID', 'PPAID'],
-            },
-        },
-        orderBy: { createdAt: 'asc' },
-    });
 
-    let remainingAmount = paymentAmount;
-    const receipts = [];
+// async function processInvoices(paymentAmount, customerId, paymentId, transactionPrisma) {
+//     const invoices = await transactionPrisma.invoice.findMany({
+//         where: {
+//             customerId,
+//             status: {
+//                 in: ['UNPAID', 'PPAID'],
+//             },
+//         },
+//         orderBy: { createdAt: 'asc' },
+//     });
 
-    await transactionPrisma.payment.update({
-        where: { id: paymentId },
-        data: { receipted: true },
-    });
+//     let remainingAmount = paymentAmount;
+//     const receipts = [];
 
-    for (const invoice of invoices) {
-        if (remainingAmount <= 0) break;
+//     await transactionPrisma.payment.update({
+//         where: { id: paymentId },
+//         data: { receipted: true },
+//     });
 
-        const invoiceDueAmount = invoice.invoiceAmount - invoice.amountPaid;
-        const paymentForInvoice = Math.min(remainingAmount, invoiceDueAmount);
+//     for (const invoice of invoices) {
+//         if (remainingAmount <= 0) break;
 
-        const updatedInvoice = await transactionPrisma.invoice.update({
-            where: { id: invoice.id },
-            data: {
-                amountPaid: invoice.amountPaid + paymentForInvoice,
-                status: invoice.amountPaid + paymentForInvoice >= invoice.invoiceAmount ? 'PAID' : 'PPAID',
-            },
-        });
+//         const invoiceDueAmount = invoice.invoiceAmount - invoice.amountPaid;
+//         const paymentForInvoice = Math.min(remainingAmount, invoiceDueAmount);
 
-        receipts.push({ invoiceId: updatedInvoice.id });
-        remainingAmount -= paymentForInvoice;
-    }
+//         const updatedInvoice = await transactionPrisma.invoice.update({
+//             where: { id: invoice.id },
+//             data: {
+//                 amountPaid: invoice.amountPaid + paymentForInvoice,
+//                 status: invoice.amountPaid + paymentForInvoice >= invoice.invoiceAmount ? 'PAID' : 'PPAID',
+//             },
+//         });
 
-    const customer = await transactionPrisma.customer.findUnique({
-        where: { id: customerId },
-        select: { closingBalance: true },
-    });
+//         receipts.push({ invoiceId: updatedInvoice.id });
+//         remainingAmount -= paymentForInvoice;
+//     }
 
-    const updatedClosingBalance = customer.closingBalance - remainingAmount;
+//     const customer = await transactionPrisma.customer.findUnique({
+//         where: { id: customerId },
+//         select: { closingBalance: true },
+//     });
 
-    if (remainingAmount > 0) {
-        await transactionPrisma.customer.update({
-            where: { id: customerId },
-            data: { closingBalance: updatedClosingBalance },
-        });
+//     const updatedClosingBalance = customer.closingBalance - remainingAmount;
 
-        receipts.push({ invoiceId: null });
-        remainingAmount = 0;
-    }
+//     if (remainingAmount > 0) {
+//         await transactionPrisma.customer.update({
+//             where: { id: customerId },
+//             data: { closingBalance: updatedClosingBalance },
+//         });
 
-    return { receipts, updatedClosingBalance };
-}
+//         receipts.push({ invoiceId: null });
+//         remainingAmount = 0;
+//     }
+
+//     return { receipts, updatedClosingBalance };
+// }
 
 module.exports = { settleInvoice };

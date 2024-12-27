@@ -197,6 +197,7 @@ const sendBill = async (req, res) => {
   }
 
   try {
+    // Fetch the customer
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
     });
@@ -205,16 +206,21 @@ const sendBill = async (req, res) => {
       return res.status(404).json({ error: 'Customer not found.' });
     }
 
-    const message = `Dear ${customer.firstName}, your current bill for this month is KES ${customer.monthlyCharge}., Your current Balance is ${customer.closingBalance}. Thank You`;
-   
-    const smsResponses = await sendSms([{ phoneNumber: sanitizedMobile, message }]);
+    // Prepare the message
+    const message = `Dear ${customer.firstName}, your current bill for this month is KES ${customer.monthlyCharge}. Your current balance is KES ${customer.closingBalance}. Thank you!`;
+
+    // Call sendSms with an array
+    const smsResponses = await sendSms([
+      { phoneNumber: customer.phoneNumber, message },
+    ]);
 
     res.status(200).json({ message: 'Bill sent successfully.', smsResponses });
   } catch (error) {
     console.error('Error sending bill:', error);
-    res.status(500).json({ error: 'Failed to send bill.' });
+    res.status(500).json({ error: 'Failed to send bill.', details: error.message });
   }
 };
+
 
 // Send bill SMS for customers grouped by collection day
 const sendBillPerDay = async (req, res) => {
