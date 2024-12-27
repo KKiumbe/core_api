@@ -162,7 +162,7 @@ model Receipt {
   paidBy         String?
   transactionCode String?
   phoneNumber    String?
-  paymentId      String? @unique 
+  paymentId      String @unique 
 
   payment        Payment ? @relation(fields: [paymentId], references: [id], onDelete: Cascade)   
   receiptInvoices ReceiptInvoice[] @relation("InvoiceReceipts")
