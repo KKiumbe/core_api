@@ -114,23 +114,7 @@ const checkSmsBalance = async () => {
     }
 };
 
-// Function to sanitize phone numbers
-function sanitizePhoneNumber(phone) {
-    if (typeof phone !== 'string') {
-        console.error('Invalid phone number format:', phone);
-        return '';
-    }
 
-    if (phone.startsWith('+254')) {
-        return phone.slice(1);
-    } else if (phone.startsWith('0')) {
-        return `254${phone.slice(1)}`;
-    } else if (phone.startsWith('254')) {
-        return phone;
-    } else {
-        return `254${phone}`;
-    }
-}
 
 module.exports = {
     sendSMS,
