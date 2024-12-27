@@ -58,15 +58,15 @@ const sendSMS = async (mobile, message) => {
       }
 
       // Sanitize phone number
-      const sanitizedMobile = sanitizePhoneNumber(mobile);
+      
 
       // Fetch the customer ID from the database
       const customer = await prisma.customer.findUnique({
-          where: { phoneNumber: sanitizedMobile },
+          where: { phoneNumber: mobile },
       });
 
       if (!customer) {
-          console.error(`No customer found for phone number: ${sanitizedMobile}`);
+          console.error(`No customer found for phone number: ${mobile}`);
           throw new Error('Customer not found. Please ensure the phone number is correct.');
       }
 
@@ -82,7 +82,7 @@ const sendSMS = async (mobile, message) => {
           data: {
               clientsmsid,
               customerId,
-              mobile: sanitizedMobile,
+              mobile,
               message,
               status: 'pending',
           },
@@ -96,7 +96,7 @@ const sendSMS = async (mobile, message) => {
           apikey: SMS_API_KEY,
           message,
           shortcode: SHORTCODE,
-          mobile: sanitizedMobile,
+          mobile,
       };
 
       console.log(`Sending SMS with payload: ${JSON.stringify(payload)}`);
@@ -204,7 +204,7 @@ const sendBill = async (req, res) => {
     }
 
     const message = `Dear ${customer.firstName}, your current bill for this month is KES ${customer.monthlyCharge}., Your current Balance is ${customer.closingBalance}. Thank You`;
-    const sanitizedMobile = sanitizePhoneNumber(customer.phoneNumber);
+   
     const smsResponses = await sendSms([{ phoneNumber: sanitizedMobile, message }]);
 
     res.status(200).json({ message: 'Bill sent successfully.', smsResponses });
