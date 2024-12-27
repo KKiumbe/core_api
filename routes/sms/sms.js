@@ -10,34 +10,45 @@ const SHORTCODE = process.env.SHORTCODE;
 const SMS_ENDPOINT = process.env.SMS_ENDPOINT;
 const SMS_BALANCE_URL = process.env.SMS_BALANCE_URL;
 
-const sendSMS = async (text, customer) => {
+
+const sendSMS = async (mobile, message) => {
     let clientsmsid;
 
     try {
-        if (!customer || !customer.phoneNumber) {
-            throw new Error("Customer's phone number is missing.");
-        }
-
         // Check SMS balance
         const balance = await checkSmsBalance();
         if (balance < 1) {
             throw new Error('Insufficient SMS balance');
         }
 
-        // Generate unique clientsmsid
-        clientsmsid = uuidv4();
-        const mobile = sanitizePhoneNumber(customer.phoneNumber);
+        // Sanitize phone number
+        const sanitizedMobile = sanitizePhoneNumber(mobile);
+
+        // Fetch the customer ID from the database
+        const customer = await prisma.customer.findUnique({
+            where: {
+                phoneNumber: sanitizedMobile, // Ensure phoneNumber is unique in your database schema
+            },
+        });
+
+        if (!customer) {
+            throw new Error('Customer not found for the provided phone number');
+        }
+
         const customerId = customer.id;
 
-        console.log(`Creating SMS record with clientsmsid: ${clientsmsid}`);
+        // Generate unique clientsmsid
+        clientsmsid = uuidv4();
+
+        console.log(`Creating SMS record with clientsmsid: ${clientsmsid} for customerId: ${customerId}`);
 
         // Create SMS record in the database
         const smsRecord = await prisma.sMS.create({
             data: {
                 clientsmsid,
                 customerId,
-                mobile,
-                message: text,
+                mobile: sanitizedMobile,
+                message,
                 status: 'pending',
             },
         });
@@ -48,9 +59,9 @@ const sendSMS = async (text, customer) => {
         const payload = {
             partnerID: PARTNER_ID,
             apikey: SMS_API_KEY,
-            message: text,
+            message,
             shortcode: SHORTCODE,
-            mobile,
+            mobile: sanitizedMobile,
         };
 
         console.log(`Sending SMS with payload: ${JSON.stringify(payload)}`);
@@ -86,6 +97,8 @@ const sendSMS = async (text, customer) => {
         throw new Error(error.response ? error.response.data : 'Failed to send SMS.');
     }
 };
+
+
 
 // Function to check SMS balance
 const checkSmsBalance = async () => {
