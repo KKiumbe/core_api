@@ -48,6 +48,8 @@ const sendToOne = async (req, res) => {
 };
 
 const sendSMS = async (mobile, message) => {
+
+  console.log(`this is ${mobile}`);
   let clientsmsid;
 
   try {

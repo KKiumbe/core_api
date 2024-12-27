@@ -88,7 +88,7 @@ const manualCashPayment = async (req, res) => {
             const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ` +
                 `Your balance is ${balanceMessage}. Help us serve you better by using Paybill No: , your phone number as the account number. Customer support: .`;
 
-                const mobile = customer?.phoneNumber;
+                const mobile = customer.phoneNumber;
 
             await sendSMS(message, mobile);
 
