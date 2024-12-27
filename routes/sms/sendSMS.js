@@ -117,5 +117,5 @@ const checkSmsBalance = async () => {
 
 
 module.exports = {
-    sendSMS,
+    sendSMS
 };
