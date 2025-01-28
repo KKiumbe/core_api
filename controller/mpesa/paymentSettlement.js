@@ -152,7 +152,7 @@ async function settleInvoice() {
                     const balanceMessage = finalClosingBalance < 0
                         ? `an overpayment of KES ${Math.abs(finalClosingBalance)}`
                         : `KES ${finalClosingBalance}`;
-                    const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. Your balance is ${balanceMessage}. Thank you for your payment.`;
+                    const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. Thank you for your payment.`;
                     await sendSMS(customer.phoneNumber, message);
 
                     console.log('SMS sent to customer.');

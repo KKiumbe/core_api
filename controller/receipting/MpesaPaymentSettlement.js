@@ -153,7 +153,7 @@ const MpesaPaymentSettlement = async (req, res) => {
             const balanceMessage = finalClosingBalance < 0
                 ? `Your closing balance is an overpayment of KES ${Math.abs(finalClosingBalance)}`
                 : `Your closing balance is KES ${finalClosingBalance}`;
-            const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} for garbage collection services received successfully. ${balanceMessage}. Always use your phone number as the account number, Thank you!`;
+            const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} for garbage collection services received successfully. Always use your phone number as the account number when paying, Thank you!`;
            //const mobile = customer.phoneNumber;
 
            const mobile = customer.phoneNumber;

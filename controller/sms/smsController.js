@@ -148,7 +148,7 @@ const sendBills = async (req, res) => {
     });
 
     const messages = activeCustomers.map((customer) => {
-      const message = `Dear ${customer.firstName}, your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge} Thank you for being a loyal customer.`;
+      const message = `Dear ${customer.firstName}, Your current Month bill is ${customer.monthlyCharge} .Help us serve you better by using Paybill No: 4151937, your phone number as the account number.Customer support: 0793645733Thank you for being a loyal customer.`;
       return { phoneNumber: customer.phoneNumber, message };
     });
 
@@ -207,7 +207,7 @@ const sendBill = async (req, res) => {
     }
 
     // Prepare the message
-    const message = `Dear ${customer.firstName}, your current bill for this month is KES ${customer.monthlyCharge}. Your current balance is KES ${customer.closingBalance}. Thank you!`;
+    const message = `Dear ${customer.firstName}, your current bill for this month is KES ${customer.monthlyCharge}.Help us serve you better by using Paybill No: 4151937, your phone number as the account number. Customer support: 0793645733. Thank you!`;
 
     // Call sendSms with an array
     const smsResponses = await sendSms([
@@ -237,7 +237,7 @@ const sendBillPerDay = async (req, res) => {
 
     const messages = customers.map((customer) => ({
       phoneNumber: customer.phoneNumber,
-      message: `Dear ${customer.firstName}, your garbage collection day is ${day}. Please ensure timely payment.`,
+      message: `Dear ${customer.firstName}, Your current Month bill is ${customer.monthlyCharge} .Help us serve you better by using Paybill No: 4151937, your phone number as the account number.Customer support: 0793645733Thank you for being a loyal customer`,
     }));
 
     const smsResponses = await sendSms(messages);
