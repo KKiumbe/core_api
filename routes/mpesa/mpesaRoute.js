@@ -4,6 +4,7 @@ const { PrismaClient } = require('@prisma/client'); // Ensure you have Prisma Cl
 const { lipaNaMpesa } = require('../../controller/mpesa/payment.js');
 const prisma = new PrismaClient(); // Create a single instance of PrismaClient
 const { settleInvoice } = require('../../controller/mpesa/paymentSettlement.js');
+const { sendsms } = require('../../controller/sms/smsController.js');
 
 // Route to handle M-Pesa callback notifications
 router.post('/callback', async (req, res) => {
@@ -38,6 +39,8 @@ router.post('/callback', async (req, res) => {
             return res.status(409).json({ message: 'Transaction already processed.', transactionId: paymentInfo.TransID });
         }
 
+
+
         // Save the payment transaction to the database
         const transaction = await prisma.mpesaTransaction.create({
             data: {
@@ -55,6 +58,13 @@ router.post('/callback', async (req, res) => {
 
         // Trigger invoice settlement process
         await settleInvoice(); // Ensure settleInvoice is correctly implemented to process invoices
+
+
+        const message = `Hello ${paymentInfo.FirstName}, we have received your payment of KES ${paymentInfo.TransAmount}. Thank you for your payment!`;
+        const smsResponses = await sendsms( paymentInfo.ref, message );
+
+
+        console.log('SMS sent:', smsResponses);
 
         // Respond with a success message
         res.status(200).json({ message: 'Payment processed successfully.' });

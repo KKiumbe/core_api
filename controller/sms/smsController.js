@@ -140,6 +140,76 @@ const sendSMS = async (mobile, message) => {
 };
 
 
+const sendsms = async (mobile, message) => {
+
+  console.log(`this is ${mobile}`);
+  let clientsmsid;
+
+  try {
+      // Check SMS balance
+      const balance = await checkSmsBalance();
+      if (balance < 1) {
+          throw new Error('Insufficient SMS balance');
+      }
+
+      // Sanitize phone number
+      
+
+    
+
+      // Generate unique clientsmsid
+      clientsmsid = uuidv4();
+      customerId = uuidv4();
+
+      console.log(`Creating SMS record with clientsmsid: ${clientsmsid}`);
+
+      // Create SMS record in the database
+      const smsRecord = await prisma.sMS.create({
+          data: {
+              clientsmsid,
+              customerId,
+              mobile,
+              message,
+              status: 'sent',
+          },
+      });
+
+      console.log(`SMS record created: ${JSON.stringify(smsRecord)}`);
+
+      // Prepare SMS payload
+      const payload = {
+          partnerID: PARTNER_ID,
+          apikey: SMS_API_KEY,
+          message,
+          shortcode: SHORTCODE,
+          mobile,
+      };
+
+      console.log(`Sending SMS with payload: ${JSON.stringify(payload)}`);
+
+      // Send SMS
+      const response = await axios.post(SMS_ENDPOINT, payload);
+
+      console.log('SMS sent successfully. Updating status to "sent".');
+
+      // Update SMS record to "sent"
+      await prisma.sMS.update({
+          where: { id: smsRecord.id },
+          data: { status: 'sent' },
+      });
+
+      return response.data;
+  } catch (error) {
+      console.error('Error sending SMS:', {
+          message: error.message,
+          stack: error.stack,
+          mobile,
+      });
+
+      
+};
+
+}
 // Send bills to all active customers
 const sendBills = async (req, res) => {
   try {
@@ -303,5 +373,6 @@ module.exports = {
   sendBillPerDay,
   sendToGroup,
   sendSMS,
-  sendToOne
+  sendToOne,
+  sendSms,sendsms
 };
