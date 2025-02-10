@@ -10,8 +10,8 @@ const { sendBills, sendToAll, sendBill, sendBillPerDay, sendToGroup,  sendToOne 
 const router = express.Router();
 
 // SMS Routes
-router.post('/send-bills', verifyToken, checkAccess('Customer', 'read'), sendBills);
-router.post('/send-to-all', verifyToken, checkAccess('Customer', 'read'), sendToAll);
+router.post('/send-bills',verifyToken, checkAccess('Customer', 'read'), sendBills);
+router.post('/send-to-all',verifyToken, checkAccess('Customer', 'read'), sendToAll);
 router.post('/send-bill', verifyToken, checkAccess('Customer', 'read'), sendBill);
 router.post('/send-bill-perday', verifyToken, checkAccess('Customer', 'read'), sendBillPerDay);
 router.post('/send-to-group', verifyToken, checkAccess('Customer', 'read'), sendToGroup);

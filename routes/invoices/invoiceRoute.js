@@ -24,7 +24,9 @@ router.post('/send-bulk-sms', addSmsJob);
 
 
 // Route to generate invoices for all active customers for a specified month
-router.post('/invoices/generate', verifyToken,checkAccess('Invoice','create'), generateInvoices);
+
+// removed verifyToken,checkAccess('Invoice','create'),
+router.post('/invoices/generate',  generateInvoices);
 
 router.post('/invoices-generate-day',checkAccess('Invoice','create'), generateInvoicesByDay)
 
@@ -32,6 +34,16 @@ router.post('/invoices-generate-day',checkAccess('Invoice','create'), generateIn
 
 // Route to cancel system-generated invoices for a specific customer and month
 router.patch('/invoices/cancel',checkAccess('Invoice','update'), cancelSystemGenInvoices);
+
+router.post('/generate-invoices-by-month', async (req, res) => {
+    try {
+      const { month } = req.body; // Get the month from the request body
+      const invoices = await generateInvoicesByMonth(month);
+      res.status(200).json({ message: 'Invoices generated successfully', invoices });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 
 
 module.exports = router;

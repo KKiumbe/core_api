@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+
 //const { GarbageCollectionDay } = require('./enum.js'); // Adjust the path if needed
 
 const schedule = require('node-schedule'); // For scheduling jobs
@@ -40,88 +41,167 @@ async function getCurrentMonthBill(customerId) {
 
 
 
-// Generate invoices for active customers atomically
 async function generateInvoices() {
+  const pMap = (await import('p-map')).default; // Dynamically import `pMap`
+
   const currentMonth = new Date().getMonth() + 1;
 
-  const transaction = await prisma.$transaction(async (prisma) => {
-    try {
-      const customers = await prisma.customer.findMany({ where: { status: 'ACTIVE' } });
-      console.log(`Found ${customers.length} active customers.`);
+  try {
+    const customers = await prisma.customer.findMany({ where: { status: 'ACTIVE' } });
+    console.log(`Found ${customers.length} active customers.`);
 
-      const invoices = await Promise.all(
-        customers.map(async (customer) => {
+    const concurrencyLimit = 5; // Process only 5 customers at a time
+
+    const invoices = await pMap(
+      customers,
+      async (customer) => {
+        try {
           const invoiceNumber = generateInvoiceNumber(customer.id);
           const invoicePeriod = new Date(new Date().getFullYear(), currentMonth - 1, 1);
           const currentClosingBalance = await getCurrentClosingBalance(customer.id);
           const currentMonthBill = await getCurrentMonthBill(customer.id);
           const invoiceAmount = currentMonthBill;
 
-          // Determine the status of the invoice based on the current closing balance
-          let status = 'UNPAID'; // Default status
-
+          let status = 'UNPAID';
           const newClosingBalance = currentClosingBalance + invoiceAmount;
 
           if (newClosingBalance < 0 && Math.abs(currentClosingBalance) >= invoiceAmount) {
-            // Scenario: PAID - Invoice is fully paid due to overpayment or negative balance
             status = 'PAID';
           } else if (newClosingBalance === 0) {
-            // Scenario: PAID - Invoice is fully paid (no remaining balance)
             status = 'PAID';
           } else if (newClosingBalance > 0 && newClosingBalance < invoiceAmount) {
-            // Scenario: PPAID (Partially Paid) - Customer has made a partial payment
             status = 'PPAID';
-          } else {
-            // Scenario: UNPAID - Customer still owes money
-            status = 'UNPAID';
           }
 
-          // Create the new invoice
           const newInvoice = await prisma.invoice.create({
             data: {
               customerId: customer.id,
               invoiceNumber,
               invoicePeriod,
-              closingBalance: newClosingBalance, // Update closing balance
+              closingBalance: newClosingBalance,
               invoiceAmount,
-              status, // Set status based on the determined condition
+              status,
               isSystemGenerated: true,
             },
           });
 
-          // Create invoice item only if invoice amount is greater than zero
-          if (invoiceAmount > 0) {
-            await prisma.invoiceItem.create({
-              data: {
-                invoiceId: newInvoice.id,
-                description: 'Monthly Charge',
-                amount: invoiceAmount,
-                quantity: 1,
-              },
-            });
-          }
+          const invoiceItemPromise =
+            invoiceAmount > 0
+              ? prisma.invoiceItem.create({
+                  data: {
+                    invoiceId: newInvoice.id,
+                    description: 'Monthly Charge',
+                    amount: invoiceAmount,
+                    quantity: 1,
+                  },
+                })
+              : Promise.resolve();
 
-          // Update the customer’s closing balance
-          await prisma.customer.update({
+          const customerUpdatePromise = prisma.customer.update({
             where: { id: customer.id },
             data: { closingBalance: newClosingBalance },
           });
 
+          await Promise.all([invoiceItemPromise, customerUpdatePromise]);
+
           return newInvoice;
-        })
-      );
+        } catch (error) {
+          console.error(`Error processing customer ${customer.id}:`, error);
+          return null;
+        }
+      },
+      { concurrency: concurrencyLimit }
+    );
 
-      console.log(`Generated ${invoices.length} invoices.`);
-      return invoices;
-    } catch (error) {
-      console.error('Error generating invoices:', error);
-      throw new Error('Transaction failed');
-    }
-  });
-
-  return transaction;
+    const successfulInvoices = invoices.filter(Boolean);
+    console.log(`Generated ${successfulInvoices.length} invoices.`);
+    return successfulInvoices;
+  } catch (error) {
+    console.error('Error generating invoices:', error);
+    throw new Error('Invoice generation failed');
+  }
 }
 
+
+
+
+async function generateInvoicesByMonth(requestedMonth) {
+  // Use the provided month or default to the current month
+  const invoiceMonth = requestedMonth ? parseInt(requestedMonth, 10) : new Date().getMonth() + 1;
+
+  // Ensure the month is valid (1-12)
+  if (invoiceMonth < 1 || invoiceMonth > 12) {
+    throw new Error('Invalid month. Please provide a value between 1 and 12.');
+  }
+
+  try {
+    const customers = await prisma.customer.findMany({ where: { status: 'ACTIVE' } });
+    console.log(`Found ${customers.length} active customers.`);
+
+    // Process all customers in parallel
+    const invoices = await Promise.all(
+      customers.map(async (customer) => {
+        const invoiceNumber = generateInvoiceNumber(customer.id);
+        const invoicePeriod = new Date(new Date().getFullYear(), invoiceMonth - 1, 1);
+        const [currentClosingBalance, currentMonthBill] = await Promise.all([
+          getCurrentClosingBalance(customer.id),
+          getCurrentMonthBill(customer.id, invoiceMonth),
+        ]);
+
+        const invoiceAmount = currentMonthBill;
+        let status = 'UNPAID';
+        const newClosingBalance = currentClosingBalance + invoiceAmount;
+
+        if (newClosingBalance < 0 && Math.abs(currentClosingBalance) >= invoiceAmount) {
+          status = 'PAID';
+        } else if (newClosingBalance === 0) {
+          status = 'PAID';
+        } else if (newClosingBalance > 0 && newClosingBalance < invoiceAmount) {
+          status = 'PPAID';
+        }
+
+        // Create invoice
+        const newInvoice = await prisma.invoice.create({
+          data: {
+            customerId: customer.id,
+            invoiceNumber,
+            invoicePeriod,
+            closingBalance: newClosingBalance,
+            invoiceAmount,
+            status,
+            isSystemGenerated: true,
+          },
+        });
+
+        // Create invoice item if amount > 0
+        if (invoiceAmount > 0) {
+          await prisma.invoiceItem.create({
+            data: {
+              invoiceId: newInvoice.id,
+              description: 'Monthly Charge',
+              amount: invoiceAmount,
+              quantity: 1,
+            },
+          });
+        }
+
+        // Update customer's closing balance
+        await prisma.customer.update({
+          where: { id: customer.id },
+          data: { closingBalance: newClosingBalance },
+        });
+
+        return newInvoice;
+      })
+    );
+
+    console.log(`Generated ${invoices.length} invoices for month ${invoiceMonth}.`);
+    return invoices;
+  } catch (error) {
+    console.error('Error generating invoices:', error);
+    throw new Error('Invoice generation failed');
+  }
+}
 
 
 schedule.scheduleJob('0 0 1 * *', async () => {
@@ -527,5 +607,6 @@ module.exports = {
   getInvoiceDetails,
   getCurrentClosingBalance,
   getCurrentMonthBill,
-  generateInvoicesByDay
+  generateInvoicesByDay,
+  generateInvoicesByMonth
 };

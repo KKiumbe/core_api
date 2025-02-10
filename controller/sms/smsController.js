@@ -148,7 +148,7 @@ const sendBills = async (req, res) => {
     });
 
     const messages = activeCustomers.map((customer) => {
-      const message = `Dear ${customer.firstName}, Your current Month bill is ${customer.monthlyCharge} .Help us serve you better by using Paybill No: 4151937, your phone number as the account number.Customer support: 0793645733Thank you for being a loyal customer.`;
+      const message = `Dear ${customer.firstName}, Your January garbage collection bill is Ksh.${customer.monthlyCharge} .Customer support: 0793645733 Thank you.`;
       return { phoneNumber: customer.phoneNumber, message };
     });
 
