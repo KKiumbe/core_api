@@ -61,7 +61,7 @@ router.post('/callback', async (req, res) => {
 
 
         const message = `Hello ${paymentInfo.FirstName}, we have received your payment of KES ${paymentInfo.TransAmount}. Thank you for your payment!`;
-        const smsResponses = await sendsms( paymentInfo.ref, message );
+        const smsResponses = await sendsms( paymentInfo?.ref, message );
 
 
         console.log('SMS sent:', smsResponses);
