@@ -8,28 +8,26 @@ const { sendsms } = require('../../controller/sms/smsController.js');
 const axios = require('axios');
 
 router.post('/callback', async (req, res) => {
-    // Check if this is a forwarded request
     const isForwarded = req.headers['x-forwarded-request'] === 'true';
-    
     const paymentData = req.body;
 
     if (!paymentData) {
         return res.status(400).json({ message: 'No payment data received' });
     }
 
+    // Parse paymentInfo for local processing with defaults for undefined fields
     const paymentInfo = {
-        TransID: paymentData.TransID,
+        TransID: paymentData.TransID || '',
         TransTime: parseTransTime(paymentData.TransTime),
-        TransAmount: parseFloat(paymentData.TransAmount),
-        ref: paymentData.BillRefNumber,
-        phone: paymentData.MSISDN,
-        FirstName: paymentData.FirstName,
+        TransAmount: parseFloat(paymentData.TransAmount) || 0,
+        ref: paymentData.BillRefNumber || '',
+        phone: paymentData.MSISDN || '',
+        FirstName: paymentData.FirstName || '',
     };
 
     console.log('Payment Notification Received:', paymentInfo);
 
     try {
-        // Check if the transaction already exists
         const existingTransaction = await prisma.mpesaTransaction.findUnique({
             where: { TransID: paymentInfo.TransID },
         });
@@ -39,7 +37,6 @@ router.post('/callback', async (req, res) => {
             return res.status(409).json({ message: 'Transaction already processed.', transactionId: paymentInfo.TransID });
         }
 
-        // Save the payment transaction to the database
         const transaction = await prisma.mpesaTransaction.create({
             data: {
                 TransID: paymentInfo.TransID,
@@ -54,31 +51,28 @@ router.post('/callback', async (req, res) => {
 
         console.log('Payment info saved to the database:', transaction);
 
-        // Forward payment data to the same URL only if not already forwarded
         if (!isForwarded) {
-            const targetUrl = 'https://taqa.co.ke/api/callback'; // Use the exact case as provided
+            const targetUrl = 'https://taqa.co.ke/api/callback'; // Lowercase URL
             try {
-                const response = await axios.post(targetUrl, paymentInfo, {
+                const response = await axios.post(targetUrl, paymentData, {
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Forwarded-Request': 'true', // Mark as forwarded
+                        'X-Forwarded-Request': 'true',
                     },
                     timeout: 5000,
                 });
-                console.log('Payment data forwarded successfully:', response.data);
+                console.log('Raw payment data forwarded successfully:', response.data);
             } catch (forwardError) {
                 console.error('Error forwarding payment data:', forwardError.message);
-                // Continue processing even if forwarding fails
             }
         } else {
             console.log('Forwarded request detected, skipping further forwarding.');
         }
 
-        // Trigger invoice settlement process
         await settleInvoice();
 
-        const message = `Hello ${paymentInfo.FirstName}, we have received your payment of KES ${paymentInfo.TransAmount}. Thank you for your payment!`;
-        const smsResponses = await sendsms(paymentInfo?.ref, message);
+        const message = `Hello ${paymentInfo.FirstName || 'Customer'}, we have received your payment of KES ${paymentInfo.TransAmount}. Thank you for your payment!`;
+        const smsResponses = await sendsms(paymentInfo.ref || 'unknown', message);
 
         console.log('SMS sent:', smsResponses);
 
@@ -92,14 +86,18 @@ router.post('/callback', async (req, res) => {
 });
 
 function parseTransTime(transTime) {
+    if (!transTime || transTime.length !== 14) {
+        console.warn('Invalid TransTime format, using current date:', transTime);
+        return new Date();
+    }
     const year = parseInt(transTime.slice(0, 4), 10);
     const month = parseInt(transTime.slice(4, 6), 10) - 1;
     const day = parseInt(transTime.slice(6, 8), 10);
     const hours = parseInt(transTime.slice(8, 10), 10);
     const minutes = parseInt(transTime.slice(10, 12), 10);
     const seconds = parseInt(transTime.slice(12, 14), 10);
-    
-    return new Date(year, month, day, hours, minutes, seconds);
+    const date = new Date(year, month, day, hours, minutes, seconds);
+    return isNaN(date) ? new Date() : date;
 }
 
 router.post('/lipa', lipaNaMpesa);
