@@ -130,10 +130,10 @@ const MpesaPaymentSettlement = async (req, res) => {
             // Calculate the new closing balance
             //changes to scenarios of balance adding 
 
-            console.log(`this is the customer balance ${customer.closingBalance}`);
+            //console.log(`this is the customer balance ${customer.closingBalance}`);
             const finalClosingBalance = customer.closingBalance - totalAmount;
 
-            console.log(`this is the payment ${finalClosingBalance}`);
+           // console.log(`this is the payment ${finalClosingBalance}`);
 
 
             // Update customer's closing balance

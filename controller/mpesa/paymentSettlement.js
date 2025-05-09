@@ -34,7 +34,7 @@ async function settleInvoice() {
         for (const transaction of mpesaTransactions) {
             const { BillRefNumber, TransAmount, id, FirstName, MSISDN: phone, TransID: MpesaCode, TransTime } = transaction;
 
-            console.log(`Processing transaction: ${id} for amount: ${TransAmount}`);
+            //console.log(`Processing transaction: ${id} for amount: ${TransAmount}`);
             let paymentAmount = parseFloat(TransAmount);
 
             if (isNaN(paymentAmount) || paymentAmount <= 0) {
@@ -47,7 +47,7 @@ async function settleInvoice() {
             });
 
             if (existingPayment) {
-                console.log(`Mpesa transaction ${MpesaCode} already exists in payment table. Skipping.`);
+                //console.log(`Mpesa transaction ${MpesaCode} already exists in payment table. Skipping.`);
                 continue;
             }
 
@@ -57,7 +57,7 @@ async function settleInvoice() {
             });
 
             if (!customer) {
-                console.log(`No customer found with BillRefNumber ${BillRefNumber}.`);
+                //console.log(`No customer found with BillRefNumber ${BillRefNumber}.`);
                 await prisma.payment.create({
                     data: {
                         amount: paymentAmount,
@@ -85,7 +85,7 @@ async function settleInvoice() {
                     },
                 });
 
-                console.log('Payment created:', payment);
+                //console.log('Payment created:', payment);
 
                 // Check for unpaid or partially paid invoices
                 const invoices = await transactionPrisma.invoice.findMany({
@@ -131,7 +131,7 @@ async function settleInvoice() {
                         data: { closingBalance: finalClosingBalance },
                     });
 
-                    console.log(`Updated closing balance for customer ${customer.id}: ${finalClosingBalance}`);
+                   // console.log(`Updated closing balance for customer ${customer.id}: ${finalClosingBalance}`);
 
                     // Create a receipt for the overpayment or closing balance adjustment
                     const receiptNumber = await generateUniqueReceiptNumber();
@@ -155,7 +155,7 @@ async function settleInvoice() {
                     const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. Thank you for your payment.`;
                     await sendSMS(customer.phoneNumber, message);
 
-                    console.log('SMS sent to customer.');
+                    //console.log('SMS sent to customer.');
                 }
 
                 await transactionPrisma.mpesaTransaction.update({
@@ -163,7 +163,7 @@ async function settleInvoice() {
                     data: { processed: true },
                 });
 
-                console.log(`Processed transaction ${MpesaCode} successfully.`);
+               // console.log(`Processed transaction ${MpesaCode} successfully.`);
             });
         }
     } catch (error) {

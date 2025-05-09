@@ -48,7 +48,7 @@ async function generateInvoices() {
 
   try {
     const customers = await prisma.customer.findMany({ where: { status: 'ACTIVE' } });
-    console.log(`Found ${customers.length} active customers.`);
+    //console.log(`Found ${customers.length} active customers.`);
 
     const concurrencyLimit = 5; // Process only 5 customers at a time
 
@@ -114,7 +114,7 @@ async function generateInvoices() {
     );
 
     const successfulInvoices = invoices.filter(Boolean);
-    console.log(`Generated ${successfulInvoices.length} invoices.`);
+    //console.log(`Generated ${successfulInvoices.length} invoices.`);
     return successfulInvoices;
   } catch (error) {
     console.error('Error generating invoices:', error);
@@ -136,7 +136,7 @@ async function generateInvoicesByMonth(requestedMonth) {
 
   try {
     const customers = await prisma.customer.findMany({ where: { status: 'ACTIVE' } });
-    console.log(`Found ${customers.length} active customers.`);
+    //console.log(`Found ${customers.length} active customers.`);
 
     // Process all customers in parallel
     const invoices = await Promise.all(
@@ -195,7 +195,7 @@ async function generateInvoicesByMonth(requestedMonth) {
       })
     );
 
-    console.log(`Generated ${invoices.length} invoices for month ${invoiceMonth}.`);
+    //console.log(`Generated ${invoices.length} invoices for month ${invoiceMonth}.`);
     return invoices;
   } catch (error) {
     console.error('Error generating invoices:', error);

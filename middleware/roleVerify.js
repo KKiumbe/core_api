@@ -22,8 +22,8 @@ const checkAccess = (module, action) => (req, res, next) => {
       });
     }
 
-    console.log(`Authenticated user: ${JSON.stringify(user)}`);
-    console.log(`Checking access for module "${module}", action "${action}", roles: ${JSON.stringify(roles)}`);
+    //console.log(`Authenticated user: ${JSON.stringify(user)}`);
+    //console.log(`Checking access for module "${module}", action "${action}", roles: ${JSON.stringify(roles)}`);
 
     // Check if the user has the required permission
     const hasPermission = roles.some((role) =>
@@ -31,7 +31,7 @@ const checkAccess = (module, action) => (req, res, next) => {
     );
 
     if (hasPermission) {
-      console.log(`Access granted for roles "${roles.join(", ")}" on ${module}:${action}`);
+      //console.log(`Access granted for roles "${roles.join(", ")}" on ${module}:${action}`);
       return next(); // User has the required permission
     }
 

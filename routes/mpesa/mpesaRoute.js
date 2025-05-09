@@ -8,7 +8,7 @@ const { sendsms } = require('../../controller/sms/smsController.js');
 const axios = require('axios');
 
 router.post('/callback', async (req, res) => {
-    const isForwarded = req.headers['x-forwarded-request'] === 'true';
+ 
     const paymentData = req.body;
 
     if (!paymentData) {
@@ -51,23 +51,6 @@ router.post('/callback', async (req, res) => {
 
         console.log('Payment info saved to the database:', transaction);
 
-        if (!isForwarded) {
-            const targetUrl = 'https://taqa.co.ke/api/callback'; // Lowercase URL
-            try {
-                const response = await axios.post(targetUrl, paymentData, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Forwarded-Request': 'true',
-                    },
-                    timeout: 5000,
-                });
-                console.log('Raw payment data forwarded successfully:', response.data);
-            } catch (forwardError) {
-                console.error('Error forwarding payment data:', forwardError.message);
-            }
-        } else {
-            console.log('Forwarded request detected, skipping further forwarding.');
-        }
 
         await settleInvoice();
 

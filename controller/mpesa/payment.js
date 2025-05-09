@@ -41,7 +41,7 @@ const lipaNaMpesa = async (req, res) => {
     // Make the payment request
     const paymentResponse = await initiatePayment(accessToken, paymentRequest);
 
-    console.log(paymentResponse);
+    //console.log(paymentResponse);
     res.status(200).json({ message: 'Payment initiated successfully', data: paymentResponse });
   } catch (error) {
     console.error('Error initiating payment:', error);

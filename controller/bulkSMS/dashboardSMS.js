@@ -32,7 +32,7 @@ const sendBulkSMS = async (customers) => {
           }
   
           const clientsmsid = uuidv4();
-          console.log(`Generated clientsmsid: ${clientsmsid}`);
+          //console.log(`Generated clientsmsid: ${clientsmsid}`);
   
           // Save each SMS to the database with status "pending"
           await prisma.sMS.create({
@@ -73,10 +73,10 @@ const sendBulkSMS = async (customers) => {
             data: { status: "sent" },
           });
   
-          console.log(`Updated status to 'sent' for ${sentIds.length} SMS records.`);
+          //console.log(`Updated status to 'sent' for ${sentIds.length} SMS records.`);
         }
   
-        console.log(`Sent ${smsList.length} bulk SMS messages.`);
+        //console.log(`Sent ${smsList.length} bulk SMS messages.`);
         return response.data;
       } else {
         console.log("No valid customers to send SMS.");
