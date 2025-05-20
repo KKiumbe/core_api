@@ -7,66 +7,69 @@ const { settleInvoice } = require('../../controller/mpesa/paymentSettlement.js')
 const { sendsms } = require('../../controller/sms/smsController.js');
 const axios = require('axios');
 
+
+
+
+const forwardUrl = process.env.PAYMENT_FORWARD_URL; 
+
+
 router.post('/callback', async (req, res) => {
- 
-    const paymentData = req.body;
+  const paymentData = req.body;
+  if (!paymentData) {
+    return res.status(400).json({ message: 'No payment data received' });
+  }
 
-    if (!paymentData) {
-        return res.status(400).json({ message: 'No payment data received' });
+  // 1) Forward to external URL (fire-and-forget or await)
+  try {
+    const forwardResponse = await axios.post(forwardUrl, paymentData);
+    console.log('Forwarded to external URL, status:', forwardResponse.status);
+  } catch (err) {
+    console.error('Failed to forward paymentData:', err.message);
+    // optionally: return res.status(502).json({ message: 'Forwarding failed' });
+  }
+
+  // 2) Your existing parsing & DB logic
+  const paymentInfo = {
+    TransID:      paymentData.TransID     || '',
+    TransTime:    parseTransTime(paymentData.TransTime),
+    TransAmount:  parseFloat(paymentData.TransAmount) || 0,
+    ref:          paymentData.BillRefNumber || '',
+    phone:        paymentData.MSISDN      || '',
+    FirstName:    paymentData.FirstName  || '',
+  };
+  console.log('Payment Notification Received:', paymentInfo);
+
+  try {
+    // ... Prisma lookup/create, settleInvoice(), send SMS, etc.
+    const existing = await prisma.mpesaTransaction.findUnique({
+      where: { TransID: paymentInfo.TransID }
+    });
+    if (existing) {
+      return res.status(409).json({ message: 'Already processed' });
     }
+    await prisma.mpesaTransaction.create({ data: {
+      TransID: paymentInfo.TransID,
+      TransTime: paymentInfo.TransTime,
+      TransAmount: paymentInfo.TransAmount,
+      BillRefNumber: paymentInfo.ref,
+      MSISDN: paymentInfo.phone,
+      FirstName: paymentInfo.FirstName,
+      processed: false,
+    }});
+    await settleInvoice();
+   // const msg = `Hello ${paymentInfo.FirstName}, received KES ${paymentInfo.TransAmount}. Thanks!`;
+   // await sendsms(paymentInfo.ref, msg);
 
-    // Parse paymentInfo for local processing with defaults for undefined fields
-    const paymentInfo = {
-        TransID: paymentData.TransID || '',
-        TransTime: parseTransTime(paymentData.TransTime),
-        TransAmount: parseFloat(paymentData.TransAmount) || 0,
-        ref: paymentData.BillRefNumber || '',
-        phone: paymentData.MSISDN || '',
-        FirstName: paymentData.FirstName || '',
-    };
-
-    console.log('Payment Notification Received:', paymentInfo);
-
-    try {
-        const existingTransaction = await prisma.mpesaTransaction.findUnique({
-            where: { TransID: paymentInfo.TransID },
-        });
-
-        if (existingTransaction) {
-            console.log(`Transaction with ID ${paymentInfo.TransID} already exists. Skipping save.`);
-            return res.status(409).json({ message: 'Transaction already processed.', transactionId: paymentInfo.TransID });
-        }
-
-        const transaction = await prisma.mpesaTransaction.create({
-            data: {
-                TransID: paymentInfo.TransID,
-                TransTime: paymentInfo.TransTime,
-                TransAmount: paymentInfo.TransAmount,
-                BillRefNumber: paymentInfo.ref,
-                MSISDN: paymentInfo.phone,
-                FirstName: paymentInfo.FirstName,
-                processed: false,
-            },
-        });
-
-        console.log('Payment info saved to the database:', transaction);
-
-
-        await settleInvoice();
-
-        const message = `Hello ${paymentInfo.FirstName || 'Customer'}, we have received your payment of KES ${paymentInfo.TransAmount}. Thank you for your payment!`;
-        const smsResponses = await sendsms(paymentInfo.ref || 'unknown', message);
-
-        console.log('SMS sent:', smsResponses);
-
-        res.status(200).json({ message: 'Payment processed successfully.' });
-    } catch (error) {
-        console.error('Error processing payment:', error);
-        res.status(500).json({ message: 'Error processing payment.', error: error.message });
-    } finally {
-        await prisma.$disconnect();
-    }
+    res.status(200).json({ message: 'Payment processed successfully.' });
+  } catch (error) {
+    console.error('Error processing payment:', error);
+    res.status(500).json({ message: 'Error processing payment.' });
+  } finally {
+    await prisma.$disconnect();
+  }
 });
+
+
 
 function parseTransTime(transTime) {
     if (!transTime || transTime.length !== 14) {
